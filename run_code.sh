@@ -14,12 +14,17 @@
 #   2. You are inside a tmux session
 #
 # Usage:
-#   tmux new -s est_training
+#   tmux new -s aug_basketball
 #   cd /mnt/shared/development/shehryar/POLARIS/Graceful
 #   bash ../pipeline_scripts/run_paper_est.sh
-#   # Ctrl+B D to detach; tmux attach -t est_training to check in
+#   # Ctrl+B D to detach; tmux attach -t aug_basketball to check in
 
 set -euo pipefail
+
+# Shared /mnt/shared output dirs are accessed from multiple hosts whose local
+# "ishana" account may have a different UID; default umask would make files
+# this host creates unwritable from the others. Force group/other-writable.
+umask 000
 
 # =============================================================================
 # 1. Input and output paths
@@ -66,7 +71,7 @@ DATABASE="duckdb"
 # 4. Held-out evaluation
 # =============================================================================
 
-TEST_DB="accidents"
+TEST_DB="basketball"
 CARDINALITY_TYPE="est"       #? est, act, dd, wj
 TEST_ALL_CARDINALITY=False   #? False: selected type only; True: est, act, dd, and wj.
 
