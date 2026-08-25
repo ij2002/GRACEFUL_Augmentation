@@ -82,7 +82,7 @@ TEST_ALL_CARDINALITY=False   #? False: selected type only; True: est, act, dd, a
 NUM_WORKERS=8
 INCLUDE_PULLUP_DATA=True
 INCLUDE_PUSHDOWN_DATA=True
-EPOCHS=50
+EPOCHS="${EPOCHS:-100}"
 BATCH_SIZE=512
 
 # =============================================================================

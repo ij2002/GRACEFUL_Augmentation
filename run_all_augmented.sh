@@ -6,6 +6,7 @@
 #
 # Usage:
 #   tmux new -s aug_name
+#   epochs test - 100 and 200 epochs epoch_test and epoch_test1
 #   TEST_DB=carcinogenesis bash run_all_augmented.sh
 #   # or just edit TEST_DB below and run: bash run_all_augmented.sh
 
@@ -18,6 +19,8 @@ TEST_DB="${TEST_DB:-basketball}"  #? Held-out database, e.g. basketball, consume
                                    #? Override at runtime: TEST_DB=consumer bash run_all_augmented.sh
 DEVICE="${DEVICE:-0}"              #? Which GPU to run on.
                                    #? Override at runtime: DEVICE=1 bash run_all_augmented.sh
+EPOCHS="${EPOCHS:-100}"            #? Number of training epochs.
+                                   #? Override at runtime: EPOCHS=50 bash run_all_augmented.sh
 
 CARDINALITY_TYPES=(est dd act wj)
 
@@ -25,7 +28,7 @@ declare -A exit_codes=()
 
 for card_type in "${CARDINALITY_TYPES[@]}"; do
     echo "=== $(date) Starting test_db=$TEST_DB cardinality_type=$card_type (cuda:$DEVICE) ==="
-    CARDINALITY_TYPE="$card_type" TEST_DB="$TEST_DB" DEVICE="$DEVICE" bash "$RUN_SCRIPT"
+    CARDINALITY_TYPE="$card_type" TEST_DB="$TEST_DB" DEVICE="$DEVICE" EPOCHS="$EPOCHS" bash "$RUN_SCRIPT"
     exit_codes["$card_type"]="$?"
     echo "=== $(date) Finished cardinality_type=$card_type (exit ${exit_codes[$card_type]}) ==="
 done
