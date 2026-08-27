@@ -96,7 +96,7 @@ AUGMENT_REFINEMENT="gated_residual"   #? residual_sum, gated_residual
 AUGMENT_COARSE_LAYERS=1               #? 0, 1, 2, ... (run 1 round of message passing between the coarse/region nodes created by the augmentation.)
 AUGMENT_INCLUDE_INV=False             #? True, False
 AUGMENT_REFINE_RET=False              #? True, False
-LAMBDA_STRUCT=0                       #? 0.0, 0.001, 0.01, 0.05, 0.1 (total_loss = runtime_loss + LAMBDA_STRUCT * coarse_fine_loss)
+LAMBDA_STRUCT=0.1                       #? 0.0, 0.001, 0.01, 0.05, 0.1 (total_loss = runtime_loss + LAMBDA_STRUCT * coarse_fine_loss)
 
 # =============================================================================
 # 7. Values derived for this execution
