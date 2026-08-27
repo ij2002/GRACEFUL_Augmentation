@@ -31,9 +31,9 @@ RUN_SCRIPT="$SCRIPT_DIR/run_code.sh"
 # summary printout below.
 # -----------------------------------------------------------------------
 JOBS=(
-    "basketball-est   TEST_DB=basketball    CARDINALITY_TYPES=est DEVICE=1 AUGMENT_POOLING=weighted_mean"
-    "basketball-est   TEST_DB=basketball    CARDINALITY_TYPES=est DEVICE=1 AUGMENT_POOLING=attention"
-    "basketball-est   TEST_DB=basketball    CARDINALITY_TYPES=est DEVICE=1 AUGMENT_REFINEMENT=residual_sum"
+    "basketball-w-mean DEVICE=1 AUGMENT_POOLING=weighted_mean"
+    "basketball-att DEVICE=1 AUGMENT_POOLING=attention"
+    "basketball-res-sum DEVICE=1 AUGMENT_REFINEMENT=residual_sum"
     # "basketball-aug  TEST_DB=basketball     CARDINALITY_TYPES=all DEVICE=0 AUGMENT=True AUGMENT_POOLING=hybrid"
 )
 

@@ -100,7 +100,7 @@ read -ra CARDINALITY_TYPE_LIST <<< "$CARDINALITY_TYPES"
 NUM_WORKERS="${NUM_WORKERS:-8}"
 INCLUDE_PULLUP_DATA="${INCLUDE_PULLUP_DATA:-True}"
 INCLUDE_PUSHDOWN_DATA="${INCLUDE_PUSHDOWN_DATA:-True}"
-EPOCHS="${EPOCHS:-100}"
+EPOCHS="${EPOCHS:-50}"
 BATCH_SIZE="${BATCH_SIZE:-512}"
 
 # =============================================================================
