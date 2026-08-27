@@ -14,10 +14,10 @@
 #   2. You are inside a tmux session
 #
 # Usage:
-#   tmux new -s aug_basketball
+#   tmux new -s est_training
 #   cd /mnt/shared/development/shehryar/POLARIS/Graceful
 #   bash ../pipeline_scripts/run_paper_est.sh
-#   # Ctrl+B D to detach; tmux attach -t aug_basketball to check in
+#   # Ctrl+B D to detach; tmux attach -t est_training to check in
 
 set -euo pipefail
 
@@ -40,13 +40,11 @@ MODELS_OUT="$SCRIPT_DIR/saved/models"
 LOG_DIR="$SCRIPT_DIR/saved/training_logs"
 SUMMARY_DIR="$SCRIPT_DIR/saved/summary_xlsx"
 BASELINE_RESULTS_XLSX="$SCRIPT_DIR/results/baseline_cost_estimation.xlsx"
-AUGMENTED_RESULTS_XLSX="$SCRIPT_DIR/results/augmented_cost_estimation.xlsx"
 AUGMENTED_PLOT_DIR="$SCRIPT_DIR/results/augmented_plots"
 
 SUMMARY_SCRIPT="$SCRIPT_DIR/summarize_training_log.py"
 REPEAT_SUMMARY_SCRIPT="$SCRIPT_DIR/summarize_repeated_runs.py"
 BASELINE_RESULTS_SCRIPT="$SCRIPT_DIR/update_baseline_cost_estimation.py"
-AUGMENTED_RESULTS_SCRIPT="$SCRIPT_DIR/update_augmented_cost_estimation.py"
 AUGMENTED_PLOT_SCRIPT="$SCRIPT_DIR/plot_augmented_cost_estimation.py"
 
 # =============================================================================
@@ -55,8 +53,8 @@ AUGMENTED_PLOT_SCRIPT="$SCRIPT_DIR/plot_augmented_cost_estimation.py"
 
 N_RUNS=1                 #? Number of sequential repetitions; all repetitions use SEED below.
 SEED=42 
-DEVICE="${DEVICE:-0}"
-CUDA_DEVICE="cuda:${DEVICE}"  #? Any integer, e.g. 0, 1, 2, 42. (override via env, e.g. DEVICE=1 bash run_code.sh)
+DEVICE="${DEVICE:-1}"
+CUDA_DEVICE="cuda:${DEVICE}"  #? Any integer, e.g. 0, 1, 2, 42. (override via env, e.g. DEVICE=0 bash run_code_gpu2_1.sh)
 DETERMINISTIC=True       #? True, False
 
 # =============================================================================
@@ -71,8 +69,8 @@ DATABASE="duckdb"
 # 4. Held-out evaluation
 # =============================================================================
 
-TEST_DB="${TEST_DB:-basketball}"       #? override via env, e.g. TEST_DB=carcinogenesis bash run_code.sh
-CARDINALITY_TYPE="${CARDINALITY_TYPE:-est}"       #? est, act, dd, wj (override via env, e.g. CARDINALITY_TYPE=act bash run_code.sh)
+TEST_DB="consumer"
+CARDINALITY_TYPE="${CARDINALITY_TYPE:-est}"       #? est, act, dd, wj (override via env, e.g. CARDINALITY_TYPE=act bash run_code_gpu2.sh)
 TEST_ALL_CARDINALITY=False   #? False: selected type only; True: est, act, dd, and wj.
 
 # =============================================================================
@@ -82,21 +80,20 @@ TEST_ALL_CARDINALITY=False   #? False: selected type only; True: est, act, dd, a
 NUM_WORKERS=8
 INCLUDE_PULLUP_DATA=True
 INCLUDE_PUSHDOWN_DATA=True
-EPOCHS="${EPOCHS:-100}"
+EPOCHS=50 #100
 BATCH_SIZE=512
 
 # =============================================================================
 # 6. Semantic graph augmentation
 # =============================================================================
 
-AUGMENT=True                          #? True, False
-TEST_AUGMENT=True                     #? Effective only when AUGMENT=True; False disables augmentation for held-out testing.
-AUGMENT_POOLING="hybrid"              #? mean, sum, max, weighted_mean, attention, hybrid
+AUGMENT=False                          #? True, False
+AUGMENT_POOLING="attention"           #? mean, sum, weighted_mean, attention
 AUGMENT_REFINEMENT="gated_residual"   #? residual_sum, gated_residual
 AUGMENT_COARSE_LAYERS=1               #? 0, 1, 2, ... (run 1 round of message passing between the coarse/region nodes created by the augmentation.)
 AUGMENT_INCLUDE_INV=False             #? True, False
 AUGMENT_REFINE_RET=False              #? True, False
-LAMBDA_STRUCT=0.1                       #? 0.0, 0.001, 0.01, 0.05, 0.1 (total_loss = runtime_loss + LAMBDA_STRUCT * coarse_fine_loss)
+LAMBDA_STRUCT=0                       #? 0.0, 0.001, 0.01, 0.05, 0.1 (total_loss = runtime_loss + LAMBDA_STRUCT * coarse_fine_loss)
 
 # =============================================================================
 # 7. Values derived for this execution
@@ -159,7 +156,6 @@ COMMON_ARGS+=(
     --batch_size "$BATCH_SIZE"
 
     --augment "$AUGMENT"
-    --test_augment "$TEST_AUGMENT"
     --augment_pooling "$AUGMENT_POOLING"
     --augment_refinement "$AUGMENT_REFINEMENT"
     --augment_coarse_layers "$AUGMENT_COARSE_LAYERS"
@@ -204,7 +200,6 @@ append_summary() {
             --run-variable "EPOCHS=$EPOCHS" \
             --run-variable "BATCH_SIZE=$BATCH_SIZE" \
             --run-variable "AUGMENT=$AUGMENT" \
-            --run-variable "TEST_AUGMENT=$TEST_AUGMENT" \
             --run-variable "AUGMENT_POOLING=$AUGMENT_POOLING" \
             --run-variable "AUGMENT_REFINEMENT=$AUGMENT_REFINEMENT" \
             --run-variable "AUGMENT_COARSE_LAYERS=$AUGMENT_COARSE_LAYERS" \
@@ -266,7 +261,6 @@ for ((run_index = 1; run_index <= N_RUNS; run_index++)); do
     echo "Batch size: $BATCH_SIZE" | tee_log
 
     echo "Augment: $AUGMENT" | tee_log
-    echo "Test augment: $TEST_AUGMENT" | tee_log
     echo "Augment pooling: $AUGMENT_POOLING" | tee_log
     echo "Augment refinement: $AUGMENT_REFINEMENT" | tee_log
     echo "Augment coarse layers: $AUGMENT_COARSE_LAYERS" | tee_log
@@ -332,34 +326,6 @@ if [[ "${AUGMENT,,}" == "false" ]]; then
 fi
 
 if [[ "${AUGMENT,,}" == "true" ]]; then
-    if [[ -f "$AUGMENTED_RESULTS_SCRIPT" ]]; then
-        set +e
-        python "$AUGMENTED_RESULTS_SCRIPT" \
-            --requested-runs "$N_RUNS" \
-            --test-db "$TEST_DB" \
-            --cardinality-type "$CARDINALITY_TYPE" \
-            --time-stamp "$GROUP_RUN_TIME" \
-            --epochs "$EPOCHS" \
-            --baseline-xlsx "$BASELINE_RESULTS_XLSX" \
-            --output-xlsx "$AUGMENTED_RESULTS_XLSX" \
-            --test-augment "$TEST_AUGMENT" \
-            --augment-pooling "$AUGMENT_POOLING" \
-            --augment-refinement "$AUGMENT_REFINEMENT" \
-            --augment-coarse-layers "$AUGMENT_COARSE_LAYERS" \
-            --augment-include-inv "$AUGMENT_INCLUDE_INV" \
-            --augment-refine-ret "$AUGMENT_REFINE_RET" \
-            --lambda-struct "$LAMBDA_STRUCT" \
-            "${RUN_XLSXS[@]}" 2>&1 | tee_log
-        augmented_results_exit_code="${PIPESTATUS[0]}"
-        set -e
-        if [[ "$augmented_results_exit_code" -ne 0 && "$overall_exit_code" -eq 0 ]]; then
-            overall_exit_code="$augmented_results_exit_code"
-        fi
-    else
-        echo "Augmented results script missing: $AUGMENTED_RESULTS_SCRIPT" >&2
-        overall_exit_code=1
-    fi
-
     if [[ -f "$BASELINE_RESULTS_XLSX" && -f "$AUGMENTED_PLOT_SCRIPT" ]]; then
         set +e
         python "$AUGMENTED_PLOT_SCRIPT" \
@@ -371,7 +337,6 @@ if [[ "${AUGMENT,,}" == "true" ]]; then
             --output-dir "$AUGMENTED_PLOT_DIR" \
             --seed "$SEED" \
             --augment "$AUGMENT" \
-            --test-augment "$TEST_AUGMENT" \
             --augment-pooling "$AUGMENT_POOLING" \
             --augment-refinement "$AUGMENT_REFINEMENT" \
             --augment-coarse-layers "$AUGMENT_COARSE_LAYERS" \
