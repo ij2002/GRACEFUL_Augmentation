@@ -13,16 +13,16 @@
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-RUN_SCRIPT="$SCRIPT_DIR/run_code.sh"
+RUN_SCRIPT="$SCRIPT_DIR/run_code_1.sh"
 
-TEST_DB="${TEST_DB:-basketball}"  #? Held-out database, e.g. basketball, consumer, carcinogenesis, ...
+TEST_DB="${TEST_DB:-basketball}"   #? Held-out database, e.g. basketball, consumer, carcinogenesis, ...
                                    #? Override at runtime: TEST_DB=consumer bash run_all_augmented.sh
 DEVICE="${DEVICE:-0}"              #? Which GPU to run on.
                                    #? Override at runtime: DEVICE=1 bash run_all_augmented.sh
-EPOCHS="${EPOCHS:-100}"            #? Number of training epochs.
+EPOCHS="${EPOCHS:-50}"             #? Number of training epochs.
                                    #? Override at runtime: EPOCHS=50 bash run_all_augmented.sh
 
-CARDINALITY_TYPES=(est dd act wj)
+CARDINALITY_TYPES=(est)
 
 declare -A exit_codes=()
 

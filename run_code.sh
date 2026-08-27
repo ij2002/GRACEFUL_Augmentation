@@ -349,8 +349,8 @@ if [[ "${AUGMENT,,}" == "true" ]]; then
             --augment-include-inv "$AUGMENT_INCLUDE_INV" \
             --augment-refine-ret "$AUGMENT_REFINE_RET" \
             --lambda-struct "$LAMBDA_STRUCT" \
-            "${RUN_XLSXS[@]}"
-        augmented_results_exit_code="$?"
+            "${RUN_XLSXS[@]}" 2>&1 | tee_log
+        augmented_results_exit_code="${PIPESTATUS[0]}"
         set -e
         if [[ "$augmented_results_exit_code" -ne 0 && "$overall_exit_code" -eq 0 ]]; then
             overall_exit_code="$augmented_results_exit_code"

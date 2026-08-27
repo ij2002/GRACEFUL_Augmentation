@@ -80,20 +80,21 @@ TEST_ALL_CARDINALITY=False   #? False: selected type only; True: est, act, dd, a
 NUM_WORKERS=8
 INCLUDE_PULLUP_DATA=True
 INCLUDE_PUSHDOWN_DATA=True
-EPOCHS=50 #100
+EPOCHS="${EPOCHS:-50}" #100
 BATCH_SIZE=512
 
 # =============================================================================
 # 6. Semantic graph augmentation
 # =============================================================================
 
-AUGMENT=False                          #? True, False
-AUGMENT_POOLING="attention"           #? mean, sum, weighted_mean, attention
-AUGMENT_REFINEMENT="gated_residual"   #? residual_sum, gated_residual
-AUGMENT_COARSE_LAYERS=1               #? 0, 1, 2, ... (run 1 round of message passing between the coarse/region nodes created by the augmentation.)
+AUGMENT=True                          #? True, False
+TEST_AUGMENT=True                     #? Effective only when AUGMENT=True; False disables augmentation for held-out testing.
+AUGMENT_POOLING="${AUGMENT_POOLING:-hybrid}"           #? mean, sum, weighted_mean, attention (override via env, e.g. AUGMENT_POOLING=attention bash run_code_1.sh)
+AUGMENT_REFINEMENT="${AUGMENT_REFINEMENT:-gated_residual}"   #? residual_sum, gated_residual (override via env, e.g. AUGMENT_REFINEMENT=residual_sum bash run_code_1.sh)
+AUGMENT_COARSE_LAYERS="${AUGMENT_COARSE_LAYERS:-1}"               #? 0, 1, 2, ... (run 1 round of message passing between the coarse/region nodes created by the augmentation.) (override via env, e.g. AUGMENT_COARSE_LAYERS=2 bash run_code_1.sh)
 AUGMENT_INCLUDE_INV=False             #? True, False
 AUGMENT_REFINE_RET=False              #? True, False
-LAMBDA_STRUCT=0                       #? 0.0, 0.001, 0.01, 0.05, 0.1 (total_loss = runtime_loss + LAMBDA_STRUCT * coarse_fine_loss)
+LAMBDA_STRUCT="${LAMBDA_STRUCT:-0}"                       #? 0.0, 0.001, 0.01, 0.05, 0.1 (total_loss = runtime_loss + LAMBDA_STRUCT * coarse_fine_loss) (override via env, e.g. LAMBDA_STRUCT=0.01 bash run_code_1.sh)
 
 # =============================================================================
 # 7. Values derived for this execution
@@ -337,6 +338,7 @@ if [[ "${AUGMENT,,}" == "true" ]]; then
             --output-dir "$AUGMENTED_PLOT_DIR" \
             --seed "$SEED" \
             --augment "$AUGMENT" \
+            --test-augment "$TEST_AUGMENT" \
             --augment-pooling "$AUGMENT_POOLING" \
             --augment-refinement "$AUGMENT_REFINEMENT" \
             --augment-coarse-layers "$AUGMENT_COARSE_LAYERS" \
