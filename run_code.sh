@@ -396,6 +396,7 @@ for CARDINALITY_TYPE in "${CARDINALITY_TYPE_LIST[@]}"; do
                 --baseline-xlsx "$BASELINE_RESULTS_XLSX" \
                 --output-dir "$AUGMENTED_PLOT_DIR" \
                 --seed "$SEED" \
+                --epochs "$EPOCHS" \
                 --augment "$AUGMENT" \
                 --test-augment "$TEST_AUGMENT" \
                 --augment-pooling "$AUGMENT_POOLING" \
