@@ -31,10 +31,9 @@ RUN_SCRIPT="$SCRIPT_DIR/run_code.sh"
 # summary printout below.
 # -----------------------------------------------------------------------
 JOBS=(
-    "basketball-w-mean DEVICE=1 AUGMENT_POOLING=weighted_mean"
-    "basketball-att DEVICE=1 AUGMENT_POOLING=attention"
-    "basketball-res-sum DEVICE=1 AUGMENT_REFINEMENT=residual_sum"
-    # "basketball-aug  TEST_DB=basketball     CARDINALITY_TYPES=all DEVICE=0 AUGMENT=True AUGMENT_POOLING=hybrid"
+    "consumer-test TEST_DB=consumer EPOCHS=100 LAMBDA_STRUCT=0.01 CARDINALITY_TYPES=act DEVICE=1"
+    "carc-test TEST_DB=carcinogenesis EPOCHS=100 LAMBDA_STRUCT=0.01 CARDINALITY_TYPES=act DEVICE=1"
+    "basketball-test TEST_DB=basketball EPOCHS=100 LAMBDA_STRUCT=0.01 CARDINALITY_TYPES=act DEVICE=1"
 )
 
 declare -A exit_codes=()
