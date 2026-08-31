@@ -31,9 +31,9 @@ RUN_SCRIPT="$SCRIPT_DIR/run_code.sh"
 # summary printout below.
 # -----------------------------------------------------------------------
 JOBS=(
-    "consumer-test TEST_DB=consumer EPOCHS=100 LAMBDA_STRUCT=0.01 CARDINALITY_TYPES=est"
-    "carc-test TEST_DB=carcinogenesis EPOCHS=100 LAMBDA_STRUCT=0.01 CARDINALITY_TYPES=est"
-    "basketball-test TEST_DB=basketball EPOCHS=100 LAMBDA_STRUCT=0.01 CARDINALITY_TYPES=est"
+    "consumer-test TEST_DB=consumer EPOCHS=100 AUGMENT_COARSE_LAYERS=3 LAMBDA_STRUCT=0.25 AUGMENT_POOLING=sum_refinement AUGMENT_POOLING=attention CARDINALITY_TYPES=est"
+    "carc-test TEST_DB=carcinogenesis EPOCHS=100 AUGMENT_COARSE_LAYERS=3 LAMBDA_STRUCT=0.25 AUGMENT_POOLING=sum_refinement AUGMENT_POOLING=attention CARDINALITY_TYPES=est"
+    "basketball-test TEST_DB=basketball EPOCHS=100 AUGMENT_COARSE_LAYERS=3 LAMBDA_STRUCT=0.25 AUGMENT_POOLING=sum_refinement AUGMENT_POOLING=attention CARDINALITY_TYPES=est"
 )
 
 declare -A exit_codes=()
