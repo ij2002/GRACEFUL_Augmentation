@@ -136,8 +136,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('--baseline_model_config', default=None,
                         help='Defaults to --model_config (baseline architecture keywords are usually identical)')
 
-    parser.add_argument('--top_n', type=int, default=10, help='Number of worst queries to keep')
-    parser.add_argument('--best_n', type=int, default=10,
+    parser.add_argument('--top_n', type=int, default=50, help='Number of worst queries to keep')
+    parser.add_argument('--best_n', type=int, default=50,
                         help='Number of best (lowest-qerror) queries to append to the same output CSV, '
                              'tagged via the "rank_group" column. 0 disables.')
     parser.add_argument('--rank_by', default='aug_qerror', choices=['aug_qerror', 'qerror_delta'],
