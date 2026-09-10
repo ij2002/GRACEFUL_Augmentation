@@ -1038,6 +1038,24 @@ def train_epoch_fn(epoch: int, train_loader: torch.utils.data.DataLoader,
         prefix='val',
         log_to_wandb=register_at_wandb, separate_sql_udf_graphs=separate_sql_udf_graphs,
         flat_vector_udf_est=flat_vector_udf_est)
+
+    # Train-accuracy proxy, mirroring the val-accuracy metrics above (same metrics list,
+    # same max_epoch_tuples cap as the training pass) so train_median_q_error_50 etc. land
+    # in the per-epoch csv_stats next to val_median_q_error_50 and can be plotted together.
+    # is_test_loader=True stops this from touching best-seen/early-stopping state, which
+    # must stay driven only by val/valtest.
+    validate_model(
+        train_loader,
+        model,
+        epoch=epoch,
+        validate_stats=epoch_stats,
+        metrics=metrics,
+        max_epoch_tuples=max_epoch_tuples,
+        prefix='train',
+        is_test_loader=True,
+        log_to_wandb=False, separate_sql_udf_graphs=separate_sql_udf_graphs,
+        flat_vector_udf_est=flat_vector_udf_est)
+
     if test_loader is not None and valtest:
         _, valtest_wandb_plots, valtest_graph_reprs, valtest_udf_reprs, valtest_labels, valtest_preds, valtest_query_stats = validate_model(
             test_loader, model, epoch=epoch, validate_stats=epoch_stats,

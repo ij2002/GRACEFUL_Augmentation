@@ -116,8 +116,10 @@ AUGMENT_INCLUDE_INV="${AUGMENT_INCLUDE_INV:-False}"  #? True, False
 AUGMENT_REFINE_RET="${AUGMENT_REFINE_RET:-False}"    #? True, False
 LAMBDA_STRUCT="${LAMBDA_STRUCT:-0}"                  #? 0.0, 0.001, 0.01, 0.05, 0.1 (total_loss = runtime_loss + LAMBDA_STRUCT * coarse_fine_loss)
 
+SAVE_LOSS_PLOTS="${SAVE_LOSS_PLOTS:-True}"   #? True, False -- generate train/val loss & accuracy plots after this run
+
 # =============================================================================
-# 7. Setup shared across every cardinality type in this invocation
+# 8. Setup shared across every cardinality type in this invocation# =============================================================================
 # =============================================================================
 
 mkdir -p "$MODELS_OUT" "$LOG_DIR" "$SUMMARY_DIR"
@@ -313,6 +315,37 @@ for CARDINALITY_TYPE in "${CARDINALITY_TYPE_LIST[@]}"; do
             run_type_exit_code="$train_exit_code"
         fi
 
+    if [[ -f "$LOSS_CURVE_SCRIPT" && "${SAVE_LOSS_PLOTS,,}" == "true" ]]; then
+        last_checkpoint_line="$(grep "Saved checkpoint to" "$LOG" | tail -1)"
+        checkpoint_pt_path="$(echo "$last_checkpoint_line" | sed -n "s/.*Saved checkpoint to \(.*\.pt\) in .*/\1/p")"
+        if [[ -n "$checkpoint_pt_path" ]]; then
+            stats_csv_path="${checkpoint_pt_path%.pt}.csv"
+            if [[ -f "$stats_csv_path" ]]; then
+                set +e
+                python "$LOSS_CURVE_SCRIPT" \
+                    --csv "$stats_csv_path" \
+                    --test-db "$TEST_DB" \
+                    --time-stamp "$GROUP_RUN_TIME" \
+                    --output-dir "$AUGMENTED_PLOT_DIR" \
+                    --seed "$SEED" \
+                    --cardinality "$CARDINALITY_TYPE" \
+                    --augment "$AUGMENT" \
+                    --test-augment "$TEST_AUGMENT" \
+                    --augment-pooling "$AUGMENT_POOLING" \
+                    --augment-refinement "$AUGMENT_REFINEMENT" \
+                    --augment-coarse-layers "$AUGMENT_COARSE_LAYERS" \
+                    --augment-include-inv "$AUGMENT_INCLUDE_INV" \
+                    --augment-refine-ret "$AUGMENT_REFINE_RET" \
+                    --lambda-struct "$LAMBDA_STRUCT" | tee_log
+                set -e
+            else
+                echo "Loss curve skipped: stats CSV not found at $stats_csv_path" | tee_log
+            fi
+        else
+            echo "Loss curve skipped: no checkpoint line found in $LOG" | tee_log
+        fi
+    fi
+    
         append_summary "$train_exit_code"
         RUN_XLSXS+=("$SUMMARY_XLSX")
     done
