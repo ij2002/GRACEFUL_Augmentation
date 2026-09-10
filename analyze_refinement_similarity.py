@@ -111,8 +111,13 @@ def capture_refinement(model, config: dict, plan, plans_path: str, statistics_fi
     the same single-query inference call:
 
     - _coarse_message_passing -- the last step before _refine_nodes -- to recover its two inputs
-      (region_members: which (node_type, node_id) nodes make up each region) and its output
-      (region_embeddings: the final pooled+message-passed embedding per region). Both are local
+      (region_embeddings: each region's raw pooled embedding, straight out of --augment_pooling,
+      before any cross-region communication; region_members: which (node_type, node_id) nodes make
+      up each region) and its output (the same regions' embeddings after --augment_coarse_layers
+      rounds of message-passing with neighboring regions -- this is the actual "context" vector
+      _refine_nodes injects into nodes). Diffing input vs. output is what lets the CSV report how
+      much a region's own representation moved *because it talked to its neighbors*, separately
+      from how much a node moved because it absorbed that (already-settled) context. Both are local
       variables inside SemanticGraphAugmentor.forward, not otherwise exposed; a forward hook only
       works on nn.Module instances, but _coarse_message_passing is a plain bound method, so it's
       intercepted by temporarily shadowing the instance attribute instead.
@@ -134,6 +139,7 @@ def capture_refinement(model, config: dict, plan, plans_path: str, statistics_fi
     def patched_coarse_mp(region_embeddings, region_members):
         result = original_coarse_mp(region_embeddings, region_members)
         captured['region_members'] = region_members
+        captured['region_embeddings_before_mp'] = region_embeddings.detach().clone()
         captured['region_embeddings'] = result.detach().clone()
         return result
 
@@ -172,15 +178,19 @@ def capture_refinement(model, config: dict, plan, plans_path: str, statistics_fi
               for node_id, lineno in enumerate(linenos_list)}
 
     return (captured.get('before'), captured.get('after'), captured.get('region_members'),
-            captured.get('region_embeddings'), linenos)
+            captured.get('region_embeddings_before_mp'), captured.get('region_embeddings'), linenos)
 
 
-def explain_refinement(augmentor, before: dict, region_members, region_embeddings) -> dict:
+def explain_refinement(augmentor, before: dict, region_members, region_embeddings_before_mp,
+                       region_embeddings) -> dict:
     """Recompute _refine_nodes's own context/gate/projection math (using the model's real,
     already-trained context_projection/gate layers) per refined node, so the aggregate
     cosine-similarity numbers can be attributed to a concrete cause: how many regions a node
     belongs to, how wide open its gate was, and how large the injected update was relative to
-    the node's own prior embedding."""
+    the node's own prior embedding. Also reports how much the *context itself* moved during
+    coarse message-passing (region_embeddings_before_mp -> region_embeddings), averaged over
+    whichever region(s) this node belongs to -- the same averaging _refine_nodes itself does to
+    build `context` in the first place."""
     if region_members is None or region_embeddings is None:
         return {}
 
@@ -199,6 +209,11 @@ def explain_refinement(augmentor, before: dict, region_members, region_embedding
             projected = augmentor.context_projection(context)
             gate = torch.sigmoid(augmentor.gate(torch.cat([original, context], dim=-1)))
             injected = gate * projected
+
+            context_before_mp = region_embeddings_before_mp[region_idxs].mean(dim=0)
+            context_change_cos = F.cosine_similarity(context_before_mp, context, dim=0)
+            context_change_delta_norm = (context - context_before_mp).norm()
+
             details[(node_type, node_id)] = {
                 'num_regions': len(region_idxs),
                 'gate_mean': gate.mean().item(),
@@ -206,6 +221,8 @@ def explain_refinement(augmentor, before: dict, region_members, region_embedding
                 'context_norm': context.norm().item(),
                 'injected_norm': injected.norm().item(),
                 'relative_injection': (injected.norm() / original.norm().clamp(min=1e-8)).item(),
+                'context_change_cosine_similarity': context_change_cos.item(),
+                'context_change_delta_norm': context_change_delta_norm.item(),
             }
     return details
 
@@ -229,6 +246,11 @@ def per_node_cosine(before: dict, after: dict, explain: dict, linenos: dict,
         if b.shape != a.shape:
             continue
         cosine = F.cosine_similarity(b, a, dim=-1)
+        # Cosine similarity only captures direction: a node could be rotated a lot while barely
+        # changing size, or rescaled a lot while barely changing direction. This is the raw
+        # Euclidean distance between the before/after vectors -- how far the embedding actually
+        # moved, in the same units as original_norm/context_norm/injected_norm below.
+        delta_norm = (a - b).norm(dim=-1)
         was_refined = ~torch.all(torch.isclose(b, a, atol=1e-7, rtol=1e-5), dim=-1)
         for node_id in range(b.shape[0]):
             lineno = linenos.get((node_type, node_id))
@@ -238,6 +260,7 @@ def per_node_cosine(before: dict, after: dict, explain: dict, linenos: dict,
                 'udf_lineno': lineno,
                 'udf_code_line': resolve_code_line(lineno, udf_source_lines),
                 'cosine_similarity': cosine[node_id].item(),
+                'embedding_delta_norm': delta_norm[node_id].item(),
                 'was_refined': bool(was_refined[node_id].item()),
             }
             row.update(explain.get((node_type, node_id), {}))
@@ -298,7 +321,7 @@ def main() -> int:
         udf_source_lines = (udf_source_cache[workload].get(udf_name_match.group(0))
                             if udf_name_match else None)
 
-        before, after, region_members, region_embeddings, linenos = capture_refinement(
+        before, after, region_members, region_embeddings_before_mp, region_embeddings, linenos = capture_refinement(
             model, config, plan, plans_paths[workload], statistics_file, feature_statistics, args.card_type,
             args.card_est_udf_sel)
         if before is None:
@@ -307,7 +330,8 @@ def main() -> int:
             skipped_no_region += 1
             continue
 
-        explain = explain_refinement(model.graph_augmentor, before, region_members, region_embeddings)
+        explain = explain_refinement(model.graph_augmentor, before, region_members, region_embeddings_before_mp,
+                                     region_embeddings)
         node_df = per_node_cosine(before, after, explain, linenos, udf_source_lines)
         if node_df.empty:
             skipped_no_region += 1
@@ -346,19 +370,7 @@ def main() -> int:
     detail_path = output_dir / f'{stem}_per_node.csv'
     detail.to_csv(detail_path, index=False)
 
-    refined_only = detail[detail['was_refined']]
-    summary = (refined_only.groupby(['rank_group', 'node_type'])['cosine_similarity']
-              .agg(['mean', 'count']).reset_index()
-              .sort_values(['node_type', 'rank_group']))
-    summary_path = output_dir / f'{stem}_summary.csv'
-    summary.to_csv(summary_path, index=False)
-
     print(f'\nWrote {len(detail)} per-node rows to {detail_path}')
-    print(f'Wrote node-type x rank-group summary to {summary_path}\n')
-    print('Mean cosine similarity (before vs. after refinement) -- lower means the node absorbed more '
-          'global context; only nodes the augmentor actually touched (was_refined) are included:\n')
-    with pd.option_context('display.width', 120):
-        print(summary.to_string(index=False))
 
     return 0
 
