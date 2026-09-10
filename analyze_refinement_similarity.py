@@ -146,10 +146,19 @@ def capture_refinement(model, config: dict, plan, plans_path: str, statistics_fi
     def patched_feat_list(feature_statistics_arg, plan_featurization_arg, src, udf_graph, *args, **kwargs):
         result = original_feat_list_fn(feature_statistics_arg, plan_featurization_arg, src, udf_graph,
                                        *args, **kwargs)
-        raw_type = udf_graph.nodes[src].get('type')
-        node_type = NX_TYPE_TO_DGL_TYPE.get(raw_type)
+        node_attrs = udf_graph.nodes[src]
+        node_type = NX_TYPE_TO_DGL_TYPE.get(node_attrs.get('type'))
         if node_type is not None:
-            node_source_by_type.setdefault(node_type, []).append(udf_graph.nodes[src].get('lineno'))
+            # udf_graph/create_graph.py splits one source line's expression into several COMP nodes
+            # -- one per library call (lib_onehot), plus one more for whatever combines their
+            # results (ops), so e.g. `numpy.mod(a,b)-numpy.power(c,d)` becomes 3 distinct nodes all
+            # sharing the same lineno. lib_onehot/ops/cmops are what actually tell those apart.
+            node_source_by_type.setdefault(node_type, []).append({
+                'lineno': node_attrs.get('lineno'),
+                'lib_onehot': node_attrs.get('lib_onehot'),
+                'ops': node_attrs.get('ops'),
+                'cmops': node_attrs.get('cmops'),
+            })
         return result
 
     def hook(_module, inputs, output):
@@ -173,12 +182,12 @@ def capture_refinement(model, config: dict, plan, plans_path: str, statistics_fi
         augmentor._coarse_message_passing = original_coarse_mp
         dd_plan_batching.create_udf_feat_list = original_feat_list_fn
 
-    linenos = {(node_type, node_id): lineno
-              for node_type, linenos_list in node_source_by_type.items()
-              for node_id, lineno in enumerate(linenos_list)}
+    node_source = {(node_type, node_id): attrs
+                  for node_type, attrs_list in node_source_by_type.items()
+                  for node_id, attrs in enumerate(attrs_list)}
 
     return (captured.get('before'), captured.get('after'), captured.get('region_members'),
-            captured.get('region_embeddings_before_mp'), captured.get('region_embeddings'), linenos)
+            captured.get('region_embeddings_before_mp'), captured.get('region_embeddings'), node_source)
 
 
 def explain_refinement(augmentor, before: dict, region_members, region_embeddings_before_mp,
@@ -236,7 +245,28 @@ def resolve_code_line(lineno: Optional[int], udf_source_lines: Optional[list]) -
     return udf_source_lines[lineno - 1].strip()
 
 
-def per_node_cosine(before: dict, after: dict, explain: dict, linenos: dict,
+def summarize_node_detail(attrs: Optional[dict]) -> Optional[str]:
+    """Several COMP (and LOOP_HEAD) nodes can share one udf_lineno/udf_code_line -- create_graph.py
+    gives each library call on a line its own node (lib_onehot), plus one more node for whatever
+    combines their results (ops); BRANCH nodes carry their comparison operator (cmops) instead.
+    This turns those attributes into a short label so otherwise-identical-looking rows for the same
+    line are distinguishable."""
+    if not attrs:
+        return None
+    parts = []
+    lib = attrs.get('lib_onehot')
+    if lib and lib != 'null':
+        parts.append(f'call={lib}')
+    ops = attrs.get('ops')
+    if ops:
+        parts.append(f'ops={",".join(ops) if isinstance(ops, (list, tuple)) else ops}')
+    cmops = attrs.get('cmops')
+    if cmops:
+        parts.append(f'cmp={cmops}')
+    return '; '.join(parts) if parts else None
+
+
+def per_node_cosine(before: dict, after: dict, explain: dict, node_source: dict,
                     udf_source_lines: Optional[list]) -> pd.DataFrame:
     rows = []
     for node_type in REFINED_NODE_TYPES:
@@ -253,12 +283,14 @@ def per_node_cosine(before: dict, after: dict, explain: dict, linenos: dict,
         delta_norm = (a - b).norm(dim=-1)
         was_refined = ~torch.all(torch.isclose(b, a, atol=1e-7, rtol=1e-5), dim=-1)
         for node_id in range(b.shape[0]):
-            lineno = linenos.get((node_type, node_id))
+            attrs = node_source.get((node_type, node_id))
+            lineno = attrs.get('lineno') if attrs else None
             row = {
                 'node_type': node_type,
                 'node_id': node_id,
                 'udf_lineno': lineno,
                 'udf_code_line': resolve_code_line(lineno, udf_source_lines),
+                'udf_node_detail': summarize_node_detail(attrs),
                 'cosine_similarity': cosine[node_id].item(),
                 'embedding_delta_norm': delta_norm[node_id].item(),
                 'was_refined': bool(was_refined[node_id].item()),
@@ -321,9 +353,9 @@ def main() -> int:
         udf_source_lines = (udf_source_cache[workload].get(udf_name_match.group(0))
                             if udf_name_match else None)
 
-        before, after, region_members, region_embeddings_before_mp, region_embeddings, linenos = capture_refinement(
-            model, config, plan, plans_paths[workload], statistics_file, feature_statistics, args.card_type,
-            args.card_est_udf_sel)
+        before, after, region_members, region_embeddings_before_mp, region_embeddings, node_source = \
+            capture_refinement(model, config, plan, plans_paths[workload], statistics_file, feature_statistics,
+                               args.card_type, args.card_est_udf_sel)
         if before is None:
             # no LOOP/BRANCH region found for this UDF -- the augmentor short-circuits and never
             # calls its own forward internals that the hook would see meaningful tensors from.
@@ -332,7 +364,7 @@ def main() -> int:
 
         explain = explain_refinement(model.graph_augmentor, before, region_members, region_embeddings_before_mp,
                                      region_embeddings)
-        node_df = per_node_cosine(before, after, explain, linenos, udf_source_lines)
+        node_df = per_node_cosine(before, after, explain, node_source, udf_source_lines)
         if node_df.empty:
             skipped_no_region += 1
             continue
