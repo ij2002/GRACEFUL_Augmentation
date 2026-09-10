@@ -19,6 +19,12 @@ per forward as `feat_dict = self.graph_augmentor(g, feat_dict)`), then running i
 at a time -- so the hook's captured before/after tensors are unambiguously about a single query's
 graph, not a batch mixing several queries' nodes together.
 
+Output is one .xlsx workbook: a `worst_best` sheet holding the input queries table verbatim, plus
+one sheet per query (`worst_1`, `worst_2`, ..., `best_1`, `best_2`, ...) holding that query's
+per-node cosine-similarity/refinement detail -- a query with no LOOP/BRANCH region (nothing for the
+augmentor to touch) simply has no sheet, leaving a gap in the numbering rather than a renumbered
+stand-in for it.
+
 Usage (reading the worst/best CSV find_worst_queries.py already wrote):
 
     python analyze_refinement_similarity.py \\

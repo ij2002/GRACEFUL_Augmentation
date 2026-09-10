@@ -145,6 +145,9 @@ def parse_args() -> argparse.Namespace:
                              'qerror_delta: queries where augmentation hurt most relative to baseline '
                              '(requires --with_baseline).')
     parser.add_argument('--output_dir', default='results/worst_queries')
+    parser.add_argument('--save_all_queries', type=str2bool, default=False,
+                        help='Also write every scored query (not just worst/best) to a separate '
+                             '_all_queries.csv. Off by default.')
     args = parser.parse_args()
 
     if args.with_baseline and not args.baseline_model_dir:
@@ -478,15 +481,17 @@ def main() -> int:
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     stem = f'{safe_filename_part(args.test_db)}_{safe_filename_part(run_stamp(model_name))}'
-    full_path = output_dir / f'{stem}_all_queries.csv'
     ranked_stem = f'{stem}_worst{args.top_n}'
     if args.best_n > 0:
         ranked_stem += f'_best{args.best_n}'
     worst_path = output_dir / f'{ranked_stem}.csv'
-    results.to_csv(full_path, index=False)
     worst_and_best.to_csv(worst_path, index=False)
 
-    print(f'\nWrote {len(results)} queries to {full_path}')
+    if args.save_all_queries:
+        full_path = output_dir / f'{stem}_all_queries.csv'
+        results.to_csv(full_path, index=False)
+        print(f'\nWrote {len(results)} queries to {full_path}')
+
     print(f'Wrote worst {len(worst)} + best {len(worst_and_best) - len(worst)} queries '
           f'(ranked by {args.rank_by}) to {worst_path}\n')
 
