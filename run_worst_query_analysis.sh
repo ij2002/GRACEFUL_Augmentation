@@ -10,4 +10,5 @@ COARSE_LAYERS=1
 python find_worst_queries.py --test_db $TEST_DB --card_type $CARD_TYPE --model_config ddestfonudf_liboh_gradnorm_mldupl_loopend_loopedge --model_dir $MODEL_DIR --model_name $MODEL_NAME --augment_pooling $POOLING --augment_coarse_layers $COARSE_LAYERS --device cuda:0 --top_n 50 --best_n 50
 
 RUN_STAMP=$(grep -oE '[0-9]{8}_[0-9]{6}_[0-9]{3}$' <<<"$MODEL_NAME")
-python analyze_refinement_similarity.py --test_db $TEST_DB --card_type $CARD_TYPE --model_config ddestfonudf_liboh_gradnorm_mldupl_loopend_loopedge --model_dir $MODEL_DIR --model_name $MODEL_NAME --augment_pooling $POOLING --augment_coarse_layers $COARSE_LAYERS --queries_csv results/worst_queries/${TEST_DB}_${RUN_STAMP}_worst50_best50.csv --device cuda:0
+QUERIES_CSV=results/worst_queries/${TEST_DB}_${RUN_STAMP}_worst50_best50.csv
+python analyze_refinement_similarity.py --test_db $TEST_DB --card_type $CARD_TYPE --model_config ddestfonudf_liboh_gradnorm_mldupl_loopend_loopedge --model_dir $MODEL_DIR --model_name $MODEL_NAME --augment_pooling $POOLING --augment_coarse_layers $COARSE_LAYERS --queries_csv $QUERIES_CSV --device cuda:0 && rm $QUERIES_CSV

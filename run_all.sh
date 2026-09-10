@@ -31,7 +31,7 @@ RUN_SCRIPT="$SCRIPT_DIR/run_code.sh"
 # summary printout below.
 # -----------------------------------------------------------------------
 JOBS=(
-    "basketball2 TEST_DB=basketball DEVICE=1 AUGMENT_POOLING=max CARDINALITY_TYPES=act EPOCHS=100 LAMBDA_STRUCT=0.25 AUGMENT_COARSE_LAYERS=1"
+    "basketball2 TEST_DB=basketball DEVICE=1 AUGMENT_POOLING=max CARDINALITY_TYPES=act EPOCHS=100 LAMBDA_STRUCT=0.1 AUGMENT_COARSE_LAYERS=1 AUGMENT_REFINEMENT=residual_sum"
     # "cons-sum TEST_DB=consumer AUGMENT_POOLING=sum CARDINALITY_TYPES=act"
     # "cons-mean TEST_DB=consumer AUGMENT_POOLING=mean CARDINALITY_TYPES=act"
     # "cons-max TEST_DB=consumer AUGMENT_POOLING=max CARDINALITY_TYPES=act"
