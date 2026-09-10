@@ -267,6 +267,17 @@ def safe_filename_part(value: str) -> str:
     return re.sub(r"[^A-Za-z0-9_.-]+", "-", value).strip("-_") or "unknown"
 
 
+RUN_STAMP_PATTERN = re.compile(r'(\d{8}_\d{6}_\d{3})$')
+
+
+def run_stamp(model_name: str) -> str:
+    """The trailing <checkpoint-timestamp>_<run> on a model name, e.g. 20260909_185342_082 out of
+    aug_act_..._cfl0.25_20260909_185342_082 -- matches results/augmented_plots/<db>_<timestamp>.png
+    naming instead of spelling out every hyperparameter keyword in the model name."""
+    match = RUN_STAMP_PATTERN.search(model_name)
+    return match.group(1) if match else model_name
+
+
 UDF_NAME_PATTERN = re.compile(r'func_\d+')
 NO_UDF_METRICS = {
     'num_udfs': 0, 'udf_num_loops_src': 0, 'udf_num_branches_src': 0, 'udf_has_nested_loop': False,
@@ -466,7 +477,7 @@ def main() -> int:
 
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    stem = f'{safe_filename_part(args.test_db)}_{safe_filename_part(model_name)}'
+    stem = f'{safe_filename_part(args.test_db)}_{safe_filename_part(run_stamp(model_name))}'
     full_path = output_dir / f'{stem}_all_queries.csv'
     ranked_stem = f'{stem}_worst{args.top_n}'
     if args.best_n > 0:

@@ -47,7 +47,7 @@ import torch.nn.functional as F
 import models.dataset.plan_graph_batching.dd_plan_batching as dd_plan_batching
 from find_worst_queries import (
     UDF_NAME_PATTERN, build_config, load_model, load_udf_source, resolve_model_name, run_query_inference,
-    safe_filename_part, str2bool,
+    run_stamp, safe_filename_part, str2bool,
 )
 from models.dataset.dataset_creation import read_workload_runs
 from cross_db_benchmark.benchmark_tools.utils import load_json
@@ -331,11 +331,23 @@ def main() -> int:
     queries = pd.read_csv(args.queries_csv)
     plans_cache = {}
     udf_source_cache = {}
-    node_frames = []
+    sheets: Dict[str, pd.DataFrame] = {}
+    worst_idx = 0
+    best_idx = 0
     skipped_no_region = 0
     skipped_not_found = 0
 
     for _, row in queries.iterrows():
+        # Sheet names track this query's rank position (worst_1 = the single worst query, ...),
+        # not just "the Nth query we managed to process" -- so a gap (a query skipped below) still
+        # leaves worst_4 meaning the 4th-worst query, never a renumbered stand-in for it.
+        if row['rank_group'] == 'worst':
+            worst_idx += 1
+            sheet_name = f'worst_{worst_idx}'
+        else:
+            best_idx += 1
+            sheet_name = f'best_{best_idx}'
+
         workload = row['workload']
         if workload not in plans_cache:
             plans, _ = read_workload_runs([plans_paths[workload]], min_runtime_ms=config['min_runtime_ms'],
@@ -376,33 +388,33 @@ def main() -> int:
         # graph -- i.e. how big a fraction of the query the refinement step touched at all.
         node_df['num_refined_nodes'] = int(node_df['was_refined'].sum())
         node_df['num_graph_nodes'] = len(node_df)
-        # keeps queries in their original (worst-to-best) order after the source-line sort below,
-        # which only reorders rows *within* one query.
-        node_df['_query_order'] = len(node_frames)
-        node_frames.append(node_df)
+        # Sort by source line so a loop's/branch's body -- COMP/BRANCH rows already linked to it as
+        # a region member -- physically lands between its LOOP and LOOPEND rows, instead of being
+        # grouped away under a separate node_type block.
+        node_df = node_df.sort_values('udf_lineno', na_position='last').reset_index(drop=True)
+        sheets[sheet_name] = node_df
 
     if skipped_not_found:
         print(f'NOTE: {skipped_not_found} queries in {args.queries_csv} had no matching plan (sql text mismatch).')
     if skipped_no_region:
-        print(f'NOTE: {skipped_no_region} queries had no LOOP/BRANCH region for the augmentor to refine.')
+        print(f'NOTE: {skipped_no_region} queries had no LOOP/BRANCH region for the augmentor to refine '
+              f'(no per-query sheet for them).')
 
-    if not node_frames:
+    if not sheets:
         raise SystemExit('No queries produced refinement data; nothing to report.')
-
-    detail = pd.concat(node_frames, ignore_index=True)
-    # Sort by source line within each query so a loop's/branch's body -- COMP/BRANCH rows that are
-    # already linked to it as a region member -- physically lands between its LOOP and LOOPEND
-    # rows, instead of being grouped away under a separate node_type block.
-    detail = detail.sort_values(['_query_order', 'udf_lineno'], na_position='last').drop(columns='_query_order')
-    detail = detail.reset_index(drop=True)
 
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    stem = f'{safe_filename_part(args.test_db)}_{safe_filename_part(model_name)}_refinement_similarity'
-    detail_path = output_dir / f'{stem}_per_node.csv'
-    detail.to_csv(detail_path, index=False)
+    stem = f'{safe_filename_part(args.test_db)}_{safe_filename_part(run_stamp(model_name))}_refinement_similarity'
+    xlsx_path = output_dir / f'{stem}.xlsx'
 
-    print(f'\nWrote {len(detail)} per-node rows to {detail_path}')
+    with pd.ExcelWriter(xlsx_path, engine='openpyxl') as writer:
+        queries.to_excel(writer, sheet_name='worst_best', index=False)
+        for sheet_name, node_df in sheets.items():
+            node_df.to_excel(writer, sheet_name=sheet_name, index=False)
+
+    print(f'\nWrote worst_best sheet ({len(queries)} queries) + {len(sheets)} per-query refinement '
+          f'sheets to {xlsx_path}')
 
     return 0
 
