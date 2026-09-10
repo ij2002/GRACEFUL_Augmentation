@@ -762,7 +762,7 @@ def train_model(workload_runs,
     # train an actual model
     while epoch < epochs and not finished and not skip_train:
         try:
-            train_epoch_fn(epoch=epoch, train_loader=train_loader, val_loader=val_loader,
+            epochs_wo_improvement = train_epoch_fn(epoch=epoch, train_loader=train_loader, val_loader=val_loader,
                            model=model, optimizer=optimizer, max_epoch_tuples=max_epoch_tuples, prof=prof,
                            apply_gradient_norm=apply_gradient_norm, metrics=metrics, lr_scheduler=pretrain_lr,
                            epochs_wo_improvement=epochs_wo_improvement, early_stopping_patience=early_stopping_patience,
@@ -789,7 +789,7 @@ def train_model(workload_runs,
     epoch_offset = epoch
     while epoch < epoch_offset + ft_epochs_udf_only and not finished and not skip_train:
         try:
-            train_epoch_fn(epoch=epoch, train_loader=train_loader_udf_only, val_loader=val_loader_udf_only,
+            epochs_wo_improvement = train_epoch_fn(epoch=epoch, train_loader=train_loader_udf_only, val_loader=val_loader_udf_only,
                            model=model, optimizer=optimizer, max_epoch_tuples=max_epoch_tuples, prof=prof,
                            apply_gradient_norm=apply_gradient_norm, metrics=metrics, lr_scheduler=ft_lr,
                            epochs_wo_improvement=epochs_wo_improvement, early_stopping_patience=early_stopping_patience,
@@ -1095,6 +1095,7 @@ def train_epoch_fn(epoch: int, train_loader: torch.utils.data.DataLoader,
 
     # see if we can already stop the training
     stop_early = False
+    hit_epoch_budget = False
     if not any_best_metric:
         epochs_wo_improvement += 1
         if early_stopping_patience is not None and epochs_wo_improvement > early_stopping_patience:
@@ -1105,6 +1106,7 @@ def train_epoch_fn(epoch: int, train_loader: torch.utils.data.DataLoader,
     # also set finished to true if this is the last epoch
     if epoch == epochs - 1:
         stop_early = True
+        hit_epoch_budget = True
 
     epoch_stats.update(stop_early=stop_early)
     print(f"epochs_wo_improvement: {epochs_wo_improvement}")
@@ -1129,11 +1131,13 @@ def train_epoch_fn(epoch: int, train_loader: torch.utils.data.DataLoader,
     epoch += 1
 
     if stop_early:
-        if epoch == epochs - 1:
+        if hit_epoch_budget:
             print(f"Finished training after {epoch} epochs")
         else:
             print(f"Early stopping kicked in due to no improvement in {early_stopping_patience} epochs")
         raise StopIteration()
+
+    return epochs_wo_improvement
 
 
 def optuna_intermediate_value(metrics):
