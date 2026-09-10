@@ -31,13 +31,13 @@ RUN_SCRIPT="$SCRIPT_DIR/run_code.sh"
 # summary printout below.
 # -----------------------------------------------------------------------
 JOBS=(
-    "basketball2 TEST_DB=basketball DEVICE=1 AUGMENT_POOLING=max CARDINALITY_TYPES=act EPOCHS=100 LAMBDA_STRUCT=0.25 AUGMENT_COARSE_LAYERS=1"
-    # "cons-sum TEST_DB=consumer AUGMENT_POOLING=sum CARDINALITY_TYPES=act"
-    # "cons-mean TEST_DB=consumer AUGMENT_POOLING=mean CARDINALITY_TYPES=act"
-    # "cons-max TEST_DB=consumer AUGMENT_POOLING=max CARDINALITY_TYPES=act"
-    # "cons-attention TEST_DB=consumer AUGMENT_POOLING=attention CARDINALITY_TYPES=act"
-    # "cons-weighted-mean TEST_DB=consumer AUGMENT_POOLING=weighted_mean CARDINALITY_TYPES=act"
-    # "cons-sum-residual TEST_DB=consumer AUGMENT_REFINEMENT=sum_residual CARDINALITY_TYPES=act"
+    "basketball3 TEST_DB=basketball DEVICE=1 AUGMENT_POOLING=max CARDINALITY_TYPES=act EPOCHS=100 LAMBDA_STRUCT=0.1 AUGMENT_COARSE_LAYERS=1"
+    # "cons-sum TEST_DB=consumer AUGMENT_POOLING=sum"
+    # "cons-mean TEST_DB=consumer AUGMENT_POOLING=mean"
+    # "cons-max TEST_DB=consumer AUGMENT_POOLING=max"
+    # "cons-attention TEST_DB=consumer AUGMENT_POOLING=attention"
+    # "cons-weighted-mean TEST_DB=consumer AUGMENT_POOLING=weighted_mean"
+    # "cons-sum-residual TEST_DB=consumer AUGMENT_REFINEMENT=sum_residual"
 )
 
 declare -A exit_codes=()

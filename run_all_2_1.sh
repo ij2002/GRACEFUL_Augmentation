@@ -31,13 +31,13 @@ RUN_SCRIPT="$SCRIPT_DIR/run_code.sh"
 # summary printout below.
 # -----------------------------------------------------------------------
 JOBS=(
-    "basketball2 TEST_DB=basketball DEVICE=1 AUGMENT_POOLING=max CARDINALITY_TYPES=act EPOCHS=100 LAMBDA_STRUCT=0.25 AUGMENT_COARSE_LAYERS=1"
-    # "cons-sum TEST_DB=consumer AUGMENT_POOLING=sum CARDINALITY_TYPES=act"
-    # "cons-mean TEST_DB=consumer AUGMENT_POOLING=mean CARDINALITY_TYPES=act"
-    # "cons-max TEST_DB=consumer AUGMENT_POOLING=max CARDINALITY_TYPES=act"
-    # "cons-attention TEST_DB=consumer AUGMENT_POOLING=attention CARDINALITY_TYPES=act"
-    # "cons-weighted-mean TEST_DB=consumer AUGMENT_POOLING=weighted_mean CARDINALITY_TYPES=act"
-    # "cons-sum-residual TEST_DB=consumer AUGMENT_REFINEMENT=sum_residual CARDINALITY_TYPES=act"
+    "basketball4 TEST_DB=basketball DEVICE=0 AUGMENT_POOLING=max CARDINALITY_TYPES=act EPOCHS=100 LAMBDA_STRUCT=0.25 AUGMENT_COARSE_LAYERS=1"
+    # "carc-sum TEST_DB=carcinogenesis DEVICE=1 AUGMENT_POOLING=sum"
+    # "carc-mean TEST_DB=carcinogenesis DEVICE=1 AUGMENT_POOLING=mean"
+    # "carc-max TEST_DB=carcinogenesis DEVICE=1 AUGMENT_POOLING=max"
+    # "carc-attention TEST_DB=carcinogenesis DEVICE=1 AUGMENT_POOLING=attention"
+    # "carc-weighted-mean TEST_DB=carcinogenesis DEVICE=1 AUGMENT_POOLING=weighted_mean"
+    # "carc-sum-residual TEST_DB=carcinogenesis DEVICE=1 AUGMENT_REFINEMENT=sum_residual"
 )
 
 declare -A exit_codes=()
