@@ -251,7 +251,9 @@ def explain_refinement(augmentor, before: dict, regions, region_members, region_
             injected = gate * projected
 
             context_before_mp = region_embeddings_before_mp[region_idxs].mean(dim=0)
-            context_change_cos = F.cosine_similarity(context_before_mp, context, dim=0)
+            # float64 for the same reason as per_node_cosine below: avoids float32 dot/norm noise
+            # making an unchanged region (e.g. one with no coarse-mp neighbors) read as != 1.0.
+            context_change_cos = F.cosine_similarity(context_before_mp.double(), context.double(), dim=0)
             context_change_delta_norm = (context - context_before_mp).norm()
 
             # e.g. "LOOP_3" or "LOOP_3;BRANCH_1" when a node sits in more than one super-node's
@@ -313,7 +315,11 @@ def per_node_cosine(before: dict, after: dict, explain: dict, node_source: dict,
         b, a = before[node_type], after[node_type]
         if b.shape != a.shape:
             continue
-        cosine = F.cosine_similarity(b, a, dim=-1)
+        # Computed in float64: at float32, F.cosine_similarity's own dot-product/norm arithmetic
+        # introduces ~1e-7 noise even for bit-identical vectors (embedding_delta_norm == 0 exactly,
+        # yet cosine came back as e.g. 0.9999998808 or 1.0000001192) -- every untouched node getting
+        # its own slightly-off value made them look inconsistent instead of uniformly unchanged.
+        cosine = F.cosine_similarity(b.double(), a.double(), dim=-1)
         # Cosine similarity only captures direction: a node could be rotated a lot while barely
         # changing size, or rescaled a lot while barely changing direction. This is the raw
         # Euclidean distance between the before/after vectors -- how far the embedding actually
