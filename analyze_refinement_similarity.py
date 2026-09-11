@@ -113,8 +113,14 @@ def find_matching_plan(plans, sql: str):
 
 def capture_refinement(model, config: dict, plan, plans_path: str, statistics_file: str,
                        feature_statistics: dict, card_type: str, card_est_udf_sel: Optional[int]):
-    """Besides the augmentor's own before/after feat_dicts, also intercept two more things during
+    """Besides the augmentor's own before/after feat_dicts, also intercept three more things during
     the same single-query inference call:
+
+    - _extract_regions -- the super-node construction step, run once at the top of forward() --
+      to recover `regions`: the (region_type, region_node_id) anchor identity (e.g. ("LOOP", 3))
+      for each entry in `region_members`, positionally aligned with it. Without this there would be
+      no way to label which concrete LOOP/BRANCH super-node a member node was pulled into -- only
+      that it belongs to "region index 3".
 
     - _coarse_message_passing -- the last step before _refine_nodes -- to recover its two inputs
       (region_embeddings: each region's raw pooled embedding, straight out of --augment_pooling,
@@ -139,8 +145,14 @@ def capture_refinement(model, config: dict, plan, plans_path: str, statistics_fi
     augmentor = model.graph_augmentor
     captured: Dict[str, object] = {}
     node_source_by_type: Dict[str, list] = {}
+    original_extract_regions = augmentor._extract_regions
     original_coarse_mp = augmentor._coarse_message_passing
     original_feat_list_fn = dd_plan_batching.create_udf_feat_list
+
+    def patched_extract_regions(graph):
+        regions, region_members = original_extract_regions(graph)
+        captured['regions'] = regions
+        return regions, region_members
 
     def patched_coarse_mp(region_embeddings, region_members):
         result = original_coarse_mp(region_embeddings, region_members)
@@ -159,7 +171,15 @@ def capture_refinement(model, config: dict, plan, plans_path: str, statistics_fi
             # -- one per library call (lib_onehot), plus one more for whatever combines their
             # results (ops), so e.g. `numpy.mod(a,b)-numpy.power(c,d)` becomes 3 distinct nodes all
             # sharing the same lineno. lib_onehot/ops/cmops are what actually tell those apart.
+            #
+            # `src` is create_graph.py's own monotonically-increasing `counter` -- the id it gave
+            # this node in the order it walked the CFG to build the graph. INVOCATION/RETURN/
+            # LOOP_END nodes are structural (they don't come from one specific AST statement) so
+            # they never get a `lineno`; `src` is what lets the sheet order them correctly anyway
+            # (INVOCATION first, LOOP_END right after its loop body, RETURN last on its path) since
+            # it reflects true control-flow order for every node type, lineno or not.
             node_source_by_type.setdefault(node_type, []).append({
+                'graph_node_id': src,
                 'lineno': node_attrs.get('lineno'),
                 'lib_onehot': node_attrs.get('lib_onehot'),
                 'ops': node_attrs.get('ops'),
@@ -172,6 +192,7 @@ def capture_refinement(model, config: dict, plan, plans_path: str, statistics_fi
         captured['before'] = {k: v.detach().clone() for k, v in feat_dict.items()}
         captured['after'] = {k: v.detach().clone() for k, v in output.items()}
 
+    augmentor._extract_regions = patched_extract_regions
     augmentor._coarse_message_passing = patched_coarse_mp
     dd_plan_batching.create_udf_feat_list = patched_feat_list
     handle = augmentor.register_forward_hook(hook)
@@ -185,6 +206,7 @@ def capture_refinement(model, config: dict, plan, plans_path: str, statistics_fi
                             card_est_udf_sel, num_workers=0, plans_override=[plan])
     finally:
         handle.remove()
+        augmentor._extract_regions = original_extract_regions
         augmentor._coarse_message_passing = original_coarse_mp
         dd_plan_batching.create_udf_feat_list = original_feat_list_fn
 
@@ -192,22 +214,25 @@ def capture_refinement(model, config: dict, plan, plans_path: str, statistics_fi
                   for node_type, attrs_list in node_source_by_type.items()
                   for node_id, attrs in enumerate(attrs_list)}
 
-    return (captured.get('before'), captured.get('after'), captured.get('region_members'),
-            captured.get('region_embeddings_before_mp'), captured.get('region_embeddings'), node_source)
+    return (captured.get('before'), captured.get('after'), captured.get('regions'),
+            captured.get('region_members'), captured.get('region_embeddings_before_mp'),
+            captured.get('region_embeddings'), node_source)
 
 
-def explain_refinement(augmentor, before: dict, region_members, region_embeddings_before_mp,
+def explain_refinement(augmentor, before: dict, regions, region_members, region_embeddings_before_mp,
                        region_embeddings) -> dict:
     """Recompute _refine_nodes's own context/gate/projection math (using the model's real,
     already-trained context_projection/gate layers) per refined node, so the aggregate
     cosine-similarity numbers can be attributed to a concrete cause: how many regions a node
-    belongs to, how wide open its gate was, and how large the injected update was relative to
-    the node's own prior embedding. Also reports how much the *context itself* moved during
-    coarse message-passing (region_embeddings_before_mp -> region_embeddings), averaged over
-    whichever region(s) this node belongs to -- the same averaging _refine_nodes itself does to
-    build `context` in the first place."""
+    belongs to, *which* super-node(s) (e.g. "LOOP_3", the same (region_type, region_node_id)
+    identity _extract_regions assigns each super-node), how wide open its gate was, and how large
+    the injected update was relative to the node's own prior embedding. Also reports how much the
+    *context itself* moved during coarse message-passing (region_embeddings_before_mp ->
+    region_embeddings), averaged over whichever region(s) this node belongs to -- the same
+    averaging _refine_nodes itself does to build `context` in the first place."""
     if region_members is None or region_embeddings is None:
         return {}
+    regions = regions or []
 
     member_regions: Dict[tuple, list] = {}
     for region_idx, members in enumerate(region_members):
@@ -229,7 +254,14 @@ def explain_refinement(augmentor, before: dict, region_members, region_embedding
             context_change_cos = F.cosine_similarity(context_before_mp, context, dim=0)
             context_change_delta_norm = (context - context_before_mp).norm()
 
+            # e.g. "LOOP_3" or "LOOP_3;BRANCH_1" when a node sits in more than one super-node's
+            # region -- same (region_type, region_node_id) identity _extract_regions constructed
+            # the super-node from, not just an opaque region index.
+            region_label = ';'.join(f'{regions[idx][0]}_{regions[idx][1]}' for idx in region_idxs
+                                    if idx < len(regions))
+
             details[(node_type, node_id)] = {
+                'region': region_label,
                 'num_regions': len(region_idxs),
                 'gate_mean': gate.mean().item(),
                 'original_norm': original.norm().item(),
@@ -294,6 +326,7 @@ def per_node_cosine(before: dict, after: dict, explain: dict, node_source: dict,
             row = {
                 'node_type': node_type,
                 'node_id': node_id,
+                'graph_node_id': attrs.get('graph_node_id') if attrs else None,
                 'udf_lineno': lineno,
                 'udf_code_line': resolve_code_line(lineno, udf_source_lines),
                 'udf_node_detail': summarize_node_detail(attrs),
@@ -371,7 +404,7 @@ def main() -> int:
         udf_source_lines = (udf_source_cache[workload].get(udf_name_match.group(0))
                             if udf_name_match else None)
 
-        before, after, region_members, region_embeddings_before_mp, region_embeddings, node_source = \
+        before, after, regions, region_members, region_embeddings_before_mp, region_embeddings, node_source = \
             capture_refinement(model, config, plan, plans_paths[workload], statistics_file, feature_statistics,
                                args.card_type, args.card_est_udf_sel)
         if before is None:
@@ -380,8 +413,8 @@ def main() -> int:
             skipped_no_region += 1
             continue
 
-        explain = explain_refinement(model.graph_augmentor, before, region_members, region_embeddings_before_mp,
-                                     region_embeddings)
+        explain = explain_refinement(model.graph_augmentor, before, regions, region_members,
+                                     region_embeddings_before_mp, region_embeddings)
         node_df = per_node_cosine(before, after, explain, node_source, udf_source_lines)
         if node_df.empty:
             skipped_no_region += 1
@@ -394,10 +427,15 @@ def main() -> int:
         # graph -- i.e. how big a fraction of the query the refinement step touched at all.
         node_df['num_refined_nodes'] = int(node_df['was_refined'].sum())
         node_df['num_graph_nodes'] = len(node_df)
-        # Sort by source line so a loop's/branch's body -- COMP/BRANCH rows already linked to it as
-        # a region member -- physically lands between its LOOP and LOOPEND rows, instead of being
-        # grouped away under a separate node_type block.
-        node_df = node_df.sort_values('udf_lineno', na_position='last').reset_index(drop=True)
+        # Sort by graph_node_id (create_graph.py's own node-creation order, which walks the CFG
+        # start to finish) rather than udf_lineno: INVOCATION/RETURN/LOOP_END are structural nodes
+        # with no source line of their own, so sorting by lineno alone stranded all of them at the
+        # bottom together (na_position='last') regardless of where they actually sit in the
+        # function -- INVOCATION always first, RETURN always last, wherever their real position
+        # was. graph_node_id has no such gaps, and it still places a loop's/branch's body -- the
+        # COMP/BRANCH rows already linked to it as a region member -- physically between its LOOP
+        # and LOOPEND rows, same as sorting by line did for nodes that had one.
+        node_df = node_df.sort_values('graph_node_id', na_position='last').reset_index(drop=True)
         sheets[sheet_name] = node_df
 
     if skipped_not_found:
