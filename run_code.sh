@@ -91,7 +91,7 @@ LOSS_CURVE_SCRIPT="$SCRIPT_DIR/plot_loss_curves.py"
 # =============================================================================
 
 N_RUNS=1                 #? Number of sequential repetitions; all repetitions use SEED below.
-SEED=42
+SEED="${SEED:-42}"
 DETERMINISTIC=True       #? True, False
 
 GPU_UUID="${GPU_UUID:-}"  #? The UUID assigned to you, e.g. GPU-12345678-abcd-4abc-9def-1234567890ab

@@ -39,7 +39,7 @@ fi
 # -----------------------------------------------------------------------
 JOBS=(
     "basketball1 TEST_DB=basketball AUGMENT_POOLING=max CARDINALITY_TYPES=act EPOCHS=100 LAMBDA_STRUCT=0.25 AUGMENT_COARSE_LAYERS=3"
-    "basketball2 TEST_DB=basketball AUGMENT_POOLING=attention CARDINALITY_TYPES=act EPOCHS=100 LAMBDA_STRUCT=0.25 AUGMENT_COARSE_LAYERS=3"
+    # "basketball2 TEST_DB=basketball AUGMENT_POOLING=attention CARDINALITY_TYPES=act EPOCHS=100 LAMBDA_STRUCT=0.25 AUGMENT_COARSE_LAYERS=3"
     # "carc-mean TEST_DB=carcinogenesis AUGMENT_POOLING=mean CARDINALITY_TYPES=act"
     # "carc-max TEST_DB=carcinogenesis AUGMENT_POOLING=max CARDINALITY_TYPES=act"
     # "carc-attention TEST_DB=carcinogenesis AUGMENT_POOLING=attention CARDINALITY_TYPES=act"
