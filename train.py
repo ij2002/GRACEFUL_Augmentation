@@ -16,6 +16,7 @@ import torch
 torch.cuda._device_count_nvml = lambda: -1
 from cross_db_benchmark.benchmark_tools.database import DatabaseSystem
 from models.training.train import train_model
+from models.zero_shot_models.utils.activations import ACTIVATION_CLASS_NAMES
 from utils.hyperparams_utils import get_config
 
 
@@ -219,6 +220,8 @@ if __name__ == '__main__':
     parser.add_argument('--augment_seq_regions', type=str2bool, default=argparse.SUPPRESS)
     parser.add_argument('--augment_cfg_coarse_edges', type=str2bool, default=argparse.SUPPRESS)
     parser.add_argument('--lambda_struct', type=float, default=argparse.SUPPRESS)
+    #? Activation used by every MLP in the model (and by the augmentor's coarse update).
+    parser.add_argument('--activation', choices=list(ACTIVATION_CLASS_NAMES), default=argparse.SUPPRESS)
 
     args = parser.parse_args()
 
@@ -350,6 +353,8 @@ if __name__ == '__main__':
         args_config['augment_cfg_coarse_edges'] = args.augment_cfg_coarse_edges
     if hasattr(args, 'lambda_struct'):
         args_config['lambda_struct'] = args.lambda_struct
+    if hasattr(args, 'activation'):
+        args_config['activation'] = args.activation
 
     train_fn = functools.partial(run_train,
                                  orig_args_config=args_config,
