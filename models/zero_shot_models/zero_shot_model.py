@@ -4,6 +4,7 @@ from torch import nn
 
 from models.zero_shot_models.message_aggregators import message_aggregators
 from models.zero_shot_models.topological_mp_layer import TopologicalMPLayer
+from models.zero_shot_models.utils import activations
 from models.zero_shot_models.utils.fc_out_model import FcOutModel
 from models.zero_shot_models.utils.node_type_encoder import NodeTypeEncoder
 from models.graph_augmentor import SemanticGraphAugmentor
@@ -77,7 +78,10 @@ class ZeroShotModel(FcOutModel):
                 include_inv=augment_include_inv,
                 refine_ret=augment_refine_ret,
                 seq_regions=augment_seq_regions,
-                cfg_coarse_edges=augment_cfg_coarse_edges)
+                cfg_coarse_edges=augment_cfg_coarse_edges,
+                #? Same activation as every MLP in the model (set via --activation).
+                activation_class_name=copy_tree_layer_kwargs.get(
+                    'activation_class_name', activations.DEFAULT_ACTIVATION_CLASS_NAME))
         else:
             self.graph_augmentor = None
         self.augmentation_enabled = self.graph_augmentor is not None

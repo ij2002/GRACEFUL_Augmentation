@@ -11,6 +11,7 @@
 #   GPU_UUID=GPU-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx TEST_DB=carcinogenesis CARDINALITY_TYPES=wj bash run_code.sh
 #   GPU_UUID=GPU-... CARDINALITY_TYPES="est act dd wj" AUGMENT=False bash run_code.sh
 #   GPU_UUID=GPU-... CARDINALITY_TYPES=all bash run_code.sh   # expands to: est act dd wj
+#   GPU_UUID=GPU-... ACTIVATION=CELU bash run_code.sh
 #
 # GPU selection follows the DKE lab server manual (sec. 3.3): GPUs are chosen
 # by the UUID assigned to you, never by index. GPU_UUID is exported as
@@ -136,6 +137,7 @@ CUDA_DEVICE="cuda:0"
 MODEL_CONFIG="ddestfonudf_liboh_gradnorm_mldupl_loopend_loopedge"
 DATA_KEYWORD="complex_dd"
 DATABASE="${DATABASE:-duckdb}"
+ACTIVATION="${ACTIVATION:-LeakyReLU}"  #? LeakyReLU, CELU, SELU, GELU -- activation of every MLP (and of the augmentor's coarse update). Non-default values are appended to the model name (e.g. _actCELU), so checkpoints never mix.
 
 # =============================================================================
 # 4. Held-out evaluation
@@ -229,6 +231,7 @@ append_summary() {
             --run-variable "MODEL_CONFIG=$MODEL_CONFIG" \
             --run-variable "DATA_KEYWORD=$DATA_KEYWORD" \
             --run-variable "DATABASE=$DATABASE" \
+            --run-variable "ACTIVATION=$ACTIVATION" \
             --run-variable "TEST_DB=$TEST_DB" \
             --run-variable "CARDINALITY_TYPE=$CARDINALITY_TYPE" \
             --run-variable "TEST_ALL_CARDINALITY=$TEST_ALL_CARDINALITY" \
@@ -283,6 +286,7 @@ for CARDINALITY_TYPE in "${CARDINALITY_TYPE_LIST[@]}"; do
         --model_config "$MODEL_CONFIG"
         --data_keyword "$DATA_KEYWORD"
         --database "$DATABASE"
+        --activation "$ACTIVATION"
 
         --card_type "$CARDINALITY_TYPE"
         --test_all_cardinality "$TEST_ALL_CARDINALITY"
@@ -345,6 +349,7 @@ for CARDINALITY_TYPE in "${CARDINALITY_TYPE_LIST[@]}"; do
         echo "Model config: $MODEL_CONFIG" | tee_log
         echo "Data keyword: $DATA_KEYWORD" | tee_log
         echo "Database: $DATABASE" | tee_log
+        echo "Activation: $ACTIVATION" | tee_log
 
         echo "Test DB: $TEST_DB" | tee_log
         echo "Card type: $CARDINALITY_TYPE" | tee_log

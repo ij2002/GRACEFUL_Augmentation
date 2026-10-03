@@ -6,6 +6,8 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 
+from models.zero_shot_models.utils import activations
+
 
 UDF_NODE_TYPES = ("INV", "COMP", "BRANCH", "LOOP", "LOOPEND", "RET")
 DEFAULT_REFINED_NODE_TYPES = ("COMP", "BRANCH", "LOOP", "LOOPEND", "RET")
@@ -22,7 +24,8 @@ class SemanticGraphAugmentor(nn.Module):
             include_inv: bool = False,
             refine_ret: bool = True,
             seq_regions: bool = False,
-            cfg_coarse_edges: bool = False):
+            cfg_coarse_edges: bool = False,
+            activation_class_name: str = activations.DEFAULT_ACTIVATION_CLASS_NAME):
         super().__init__()
         valid_pooling = {"mean", "sum", "max", "weighted_mean", "attention", "hybrid"}
         valid_refinement = {"residual_sum", "gated_residual"}
@@ -30,6 +33,9 @@ class SemanticGraphAugmentor(nn.Module):
             raise ValueError(f"Unknown augment pooling {pooling}. Expected one of {sorted(valid_pooling)}")
         if refinement not in valid_refinement:
             raise ValueError(f"Unknown augment refinement {refinement}. Expected one of {sorted(valid_refinement)}")
+        if activation_class_name not in activations.ACTIVATION_CLASS_NAMES:
+            raise ValueError(f"Unknown activation {activation_class_name}. "
+                             f"Expected one of {list(activations.ACTIVATION_CLASS_NAMES)}")
 
         self.hidden_dim = hidden_dim
         self.pooling = pooling
@@ -39,6 +45,8 @@ class SemanticGraphAugmentor(nn.Module):
         self.refine_ret = refine_ret
         self.seq_regions = seq_regions
         self.cfg_coarse_edges = cfg_coarse_edges
+        #? Kept in sync with the MLPs' activation (fc_out_kwargs['activation_class_name']).
+        self.activation_class_name = activation_class_name
 
         self.attention_score = nn.Linear(hidden_dim, 1)
         if seq_regions:
@@ -51,13 +59,21 @@ class SemanticGraphAugmentor(nn.Module):
             self.hybrid_projection = nn.Linear(hidden_dim * 2, hidden_dim)
         self.coarse_update = nn.Sequential(
             nn.Linear(hidden_dim * 2, hidden_dim),
-            nn.LeakyReLU(inplace=True),
+            self._make_activation(),
             nn.Linear(hidden_dim, hidden_dim),
         )
         self.context_projection = nn.Linear(hidden_dim, hidden_dim)
         self.gate = nn.Linear(hidden_dim * 2, hidden_dim)
         self.layer_norm = nn.LayerNorm(hidden_dim)
         self.last_coarse_fine_loss = None
+
+    def _make_activation(self) -> nn.Module:
+        act_class = activations.__dict__[self.activation_class_name]
+        try:
+            return act_class(inplace=True)
+        except TypeError:
+            #? Activations without an inplace flag (e.g. GELU) are built without it.
+            return act_class()
 
     def forward(self, graph, feat_dict: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         #? The augmentor only enriches encoded UDF node embeddings and leaves the original graph unchanged.

@@ -4,6 +4,8 @@ from typing import Dict, Any
 
 from cross_db_benchmark.datasets.datasets import dataset_list_dict
 from models.dataset.plan_featurization.dd_plan_featurizations import featurization_dict
+from models.zero_shot_models.utils.activations import (ACTIVATION_CLASS_NAMES,
+                                                       DEFAULT_ACTIVATION_CLASS_NAME)
 
 config_keywords = {
     'qloss': 'loss',
@@ -61,7 +63,7 @@ def get_config(hyperparams: Dict[str, Any], wl_base_path: str, assemble_filename
 
     # general fc out
     fc_out_kwargs = dict(
-        activation_class_name='LeakyReLU',
+        activation_class_name=DEFAULT_ACTIVATION_CLASS_NAME,
         activation_class_kwargs={},
         norm_class_name='Identity',
         norm_class_kwargs={},
@@ -406,6 +408,18 @@ def get_config(hyperparams: Dict[str, Any], wl_base_path: str, assemble_filename
         config['augment_cfg_coarse_edges'] = hyperparams.pop('augment_cfg_coarse_edges')
         if config['augment'] and config['augment_cfg_coarse_edges']:
             model_name += '_augcfge'
+    if 'activation' in hyperparams:
+        #? Activation of every MLP layer (final MLP, tree layers, node type encoders) and of the
+        #? augmentor's coarse update. Must be popped before fc_out_kwargs is merged into the
+        #? per-component kwargs below, otherwise the change never reaches the model.
+        activation = hyperparams.pop('activation')
+        if activation not in ACTIVATION_CLASS_NAMES:
+            raise ValueError(f"Unknown activation {activation}. Expected one of {list(ACTIVATION_CLASS_NAMES)}")
+        #? Not stored in config: it reaches the model through the three *_kwargs dicts below,
+        #? which train_model() already forwards.
+        fc_out_kwargs['activation_class_name'] = activation
+        if activation != DEFAULT_ACTIVATION_CLASS_NAME:
+            model_name += f'_act{activation}'
     if 'lambda_struct' in hyperparams:
         #? This only affects training loss; base GRACEFUL still uses runtime loss alone when augmentation is off.
         config['lambda_struct'] = hyperparams.pop('lambda_struct')

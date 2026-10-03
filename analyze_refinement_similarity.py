@@ -56,6 +56,8 @@ from find_worst_queries import (
     run_stamp, safe_filename_part, str2bool,
 )
 from models.dataset.dataset_creation import read_workload_runs
+from models.zero_shot_models.utils.activations import (ACTIVATION_CLASS_NAMES,
+                                                       DEFAULT_ACTIVATION_CLASS_NAME)
 from cross_db_benchmark.benchmark_tools.utils import load_json
 
 REFINED_NODE_TYPES = ("INV", "COMP", "BRANCH", "LOOP", "LOOPEND", "RET")
@@ -97,6 +99,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('--augment_coarse_layers', type=int, default=1)
     parser.add_argument('--augment_include_inv', type=str2bool, default=False)
     parser.add_argument('--augment_refine_ret', type=str2bool, default=True)
+    #? Must match the activation the checkpoint was trained with (--activation).
+    parser.add_argument('--activation', default=DEFAULT_ACTIVATION_CLASS_NAME,
+                        choices=list(ACTIVATION_CLASS_NAMES))
 
     parser.add_argument('--queries_csv', required=True,
                         help='A worst/best CSV from find_worst_queries.py (needs workload, sql, rank_group columns)')
@@ -363,7 +368,8 @@ def main() -> int:
         args.model_config, args.data_keyword, args.mp_ignore_udf, args.work_with_udf_repr, augment=True,
         test_augment=args.test_augment, augment_pooling=args.augment_pooling,
         augment_refinement=args.augment_refinement, augment_coarse_layers=args.augment_coarse_layers,
-        augment_include_inv=args.augment_include_inv, augment_refine_ret=args.augment_refine_ret)
+        augment_include_inv=args.augment_include_inv, augment_refine_ret=args.augment_refine_ret,
+        activation=args.activation)
     config['max_runtime'] = args.max_runtime
     config['min_runtime_ms'] = args.min_runtime_ms
 

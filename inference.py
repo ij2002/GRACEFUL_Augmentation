@@ -16,6 +16,7 @@ from models.training.metrics import RMSE, QError, MAPE
 from models.training.train import run_inference
 from models.training.utils import find_early_stopping_metric
 from models.zero_shot_models.specific_models.model import zero_shot_models
+from models.zero_shot_models.utils.activations import ACTIVATION_CLASS_NAMES
 from utils.hyperparams_utils import get_config
 
 
@@ -60,6 +61,8 @@ if __name__ == '__main__':
     parser.add_argument('--augment_refine_ret', type=str2bool, default=argparse.SUPPRESS)
     parser.add_argument('--augment_seq_regions', type=str2bool, default=argparse.SUPPRESS)
     parser.add_argument('--augment_cfg_coarse_edges', type=str2bool, default=argparse.SUPPRESS)
+    #? Must match the activation the checkpoint was trained with (--activation).
+    parser.add_argument('--activation', choices=list(ACTIVATION_CLASS_NAMES), default=argparse.SUPPRESS)
     ###
     # End Args
     ###
@@ -114,6 +117,8 @@ if __name__ == '__main__':
         args_config['augment_seq_regions'] = args.augment_seq_regions
     if hasattr(args, 'augment_cfg_coarse_edges'):
         args_config['augment_cfg_coarse_edges'] = args.augment_cfg_coarse_edges
+    if hasattr(args, 'activation'):
+        args_config['activation'] = args.activation
 
     orig_args_config = args_config.copy()
     config, _, _, _, _ = get_config(args_config, wl_base_path='', assemble_filenames=False)

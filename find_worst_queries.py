@@ -65,6 +65,8 @@ from models.training.metrics import MAPE, QError, RMSE
 from models.training.train import run_inference
 from models.training.utils import find_early_stopping_metric
 from models.zero_shot_models.specific_models.model import zero_shot_models
+from models.zero_shot_models.utils.activations import (ACTIVATION_CLASS_NAMES,
+                                                       DEFAULT_ACTIVATION_CLASS_NAME)
 from utils.hyperparams_utils import get_config
 
 DATABASE = DatabaseSystem.DUCKDB
@@ -123,6 +125,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('--augment_coarse_layers', type=int, default=1)
     parser.add_argument('--augment_include_inv', type=str2bool, default=False)
     parser.add_argument('--augment_refine_ret', type=str2bool, default=True)
+    #? Must match the activation the checkpoint was trained with (--activation).
+    parser.add_argument('--activation', default=DEFAULT_ACTIVATION_CLASS_NAME,
+                        choices=list(ACTIVATION_CLASS_NAMES))
 
     ###
     # Baseline (non-augmented) model -- optional, off by default
@@ -171,8 +176,9 @@ def resolve_model_name(model_dir: str, model_name: Optional[str]) -> str:
 
 def build_config(model_config: str, data_keyword: str, mp_ignore_udf: Optional[bool], work_with_udf_repr: bool,
                  augment: bool, test_augment: bool, augment_pooling: str, augment_refinement: str,
-                 augment_coarse_layers: int, augment_include_inv: bool, augment_refine_ret: bool) -> dict:
-    args_config = {'model_config': model_config, 'data_keyword': data_keyword}
+                 augment_coarse_layers: int, augment_include_inv: bool, augment_refine_ret: bool,
+                 activation: str = DEFAULT_ACTIVATION_CLASS_NAME) -> dict:
+    args_config = {'model_config': model_config, 'data_keyword': data_keyword, 'activation': activation}
     if mp_ignore_udf is not None:
         args_config['mp_ignore_udf'] = mp_ignore_udf
     if work_with_udf_repr:
@@ -382,7 +388,8 @@ def main() -> int:
         args.model_config, args.data_keyword, args.mp_ignore_udf, args.work_with_udf_repr, augment=True,
         test_augment=args.test_augment, augment_pooling=args.augment_pooling,
         augment_refinement=args.augment_refinement, augment_coarse_layers=args.augment_coarse_layers,
-        augment_include_inv=args.augment_include_inv, augment_refine_ret=args.augment_refine_ret)
+        augment_include_inv=args.augment_include_inv, augment_refine_ret=args.augment_refine_ret,
+        activation=args.activation)
     aug_config['max_runtime'] = args.max_runtime
     aug_config['min_runtime_ms'] = args.min_runtime_ms
 
@@ -392,7 +399,8 @@ def main() -> int:
             args.baseline_model_config or args.model_config, args.data_keyword, args.mp_ignore_udf,
             args.work_with_udf_repr, augment=False, test_augment=False, augment_pooling=args.augment_pooling,
             augment_refinement=args.augment_refinement, augment_coarse_layers=args.augment_coarse_layers,
-            augment_include_inv=args.augment_include_inv, augment_refine_ret=args.augment_refine_ret)
+            augment_include_inv=args.augment_include_inv, augment_refine_ret=args.augment_refine_ret,
+            activation=args.activation)
         baseline_config['max_runtime'] = args.max_runtime
         baseline_config['min_runtime_ms'] = args.min_runtime_ms
 
