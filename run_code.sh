@@ -173,6 +173,7 @@ AUGMENT_REFINEMENT="${AUGMENT_REFINEMENT:-gated_residual}"  #? residual_sum, gat
 AUGMENT_COARSE_LAYERS="${AUGMENT_COARSE_LAYERS:-1}"  #? 0, 1, 2, ... (rounds of message passing between coarse/region nodes)
 AUGMENT_INCLUDE_INV="${AUGMENT_INCLUDE_INV:-False}"  #? True, False
 AUGMENT_REFINE_RET="${AUGMENT_REFINE_RET:-False}"    #? True, False
+AUGMENT_SEQ_REGIONS="${AUGMENT_SEQ_REGIONS:-True}"   #? True, False (SEQ supernodes for statements outside loops/branches)
 LAMBDA_STRUCT="${LAMBDA_STRUCT:-0}"                  #? 0.0, 0.001, 0.01, 0.05, 0.1 (total_loss = runtime_loss + LAMBDA_STRUCT * coarse_fine_loss)
 
 SAVE_LOSS_PLOTS="${SAVE_LOSS_PLOTS:-True}"   #? True, False -- generate train/val loss & accuracy plots after this run
@@ -247,6 +248,7 @@ append_summary() {
             --run-variable "AUGMENT_COARSE_LAYERS=$AUGMENT_COARSE_LAYERS" \
             --run-variable "AUGMENT_INCLUDE_INV=$AUGMENT_INCLUDE_INV" \
             --run-variable "AUGMENT_REFINE_RET=$AUGMENT_REFINE_RET" \
+            --run-variable "AUGMENT_SEQ_REGIONS=$AUGMENT_SEQ_REGIONS" \
             --run-variable "LAMBDA_STRUCT=$LAMBDA_STRUCT" \
             --run-variable "GROUP_RUN_TIME=$GROUP_RUN_TIME" \
             --run-variable "PYTHONHASHSEED=$PYTHONHASHSEED" \
@@ -317,6 +319,7 @@ for CARDINALITY_TYPE in "${CARDINALITY_TYPE_LIST[@]}"; do
         --augment_coarse_layers "$AUGMENT_COARSE_LAYERS"
         --augment_include_inv "$AUGMENT_INCLUDE_INV"
         --augment_refine_ret "$AUGMENT_REFINE_RET"
+        --augment_seq_regions "$AUGMENT_SEQ_REGIONS"
         --lambda_struct "$LAMBDA_STRUCT"
     )
 
@@ -368,6 +371,7 @@ for CARDINALITY_TYPE in "${CARDINALITY_TYPE_LIST[@]}"; do
         echo "Augment coarse layers: $AUGMENT_COARSE_LAYERS" | tee_log
         echo "Augment include INV: $AUGMENT_INCLUDE_INV" | tee_log
         echo "Augment refine RET: $AUGMENT_REFINE_RET" | tee_log
+        echo "Augment SEQ regions: $AUGMENT_SEQ_REGIONS" | tee_log
         echo "Lambda struct: $LAMBDA_STRUCT" | tee_log
         echo "Protocol: $DATA_KEYWORD = train on 19 DBs, test on held-out database" | tee_log
 

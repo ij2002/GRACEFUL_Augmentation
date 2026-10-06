@@ -149,7 +149,7 @@ def get_config(hyperparams: Dict[str, Any], wl_base_path: str, assemble_filename
         augment_coarse_layers=1,
         augment_include_inv=False,
         augment_refine_ret=True,
-        augment_seq_regions=False,
+        augment_seq_regions=True,
         augment_cfg_coarse_edges=False,
         lambda_struct=0.0,
     )
