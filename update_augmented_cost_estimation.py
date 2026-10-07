@@ -25,6 +25,7 @@ CONFIG_HEADERS = (
     "augment-coarse-layers",
     "augment-include-inv",
     "augment-refine-ret",
+    "augment-seq-regions",
     "lambda-struct",
 )
 HEADERS = [
@@ -54,6 +55,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--augment-coarse-layers", type=int, required=True)
     parser.add_argument("--augment-include-inv", required=True)
     parser.add_argument("--augment-refine-ret", required=True)
+    # Optional: summaries from before SEQ supernodes existed have no such flag (= False).
+    parser.add_argument("--augment-seq-regions", default="False")
     parser.add_argument("--lambda-struct", type=float, required=True)
     return parser.parse_args()
 
@@ -143,6 +146,7 @@ def build_values(
         "augment-coarse-layers": args.augment_coarse_layers,
         "augment-include-inv": args.augment_include_inv,
         "augment-refine-ret": args.augment_refine_ret,
+        "augment-seq-regions": args.augment_seq_regions,
         "lambda-struct": args.lambda_struct,
     }
     for kind, prefix in WORKLOAD_PREFIXES:
@@ -182,6 +186,12 @@ def same_configuration(left: Dict[str, object], right: Dict[str, object]) -> boo
     for header in key_headers:
         if header in {"epochs", "augment-coarse-layers", "lambda-struct"}:
             if as_float(left.get(header)) != as_float(right.get(header)):
+                return False
+        elif header == "augment-seq-regions":
+            # Rows created before SEQ supernodes existed were run without them.
+            left_value = "False" if left.get(header) in (None, "") else left.get(header)
+            right_value = "False" if right.get(header) in (None, "") else right.get(header)
+            if normalized(left_value) != normalized(right_value):
                 return False
         elif header == "test-augment":
             # Rows created before TEST_AUGMENT existed always tested with augmentation enabled.

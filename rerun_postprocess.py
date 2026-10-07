@@ -127,6 +127,7 @@ def main() -> int:
                   "--cardinality-type", cfg["CARDINALITY_TYPE"],
                   "--baseline-xlsx", str(BASELINE_XLSX),
                   "--output-xlsx", str(AUGMENTED_XLSX),
+                  "--augment-seq-regions", cfg.get("AUGMENT_SEQ_REGIONS", "False"),
                   *aug_flags, *files], args.dry_run)
         exit_code = exit_code or rc
 
