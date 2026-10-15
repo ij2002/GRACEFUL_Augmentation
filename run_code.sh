@@ -54,19 +54,8 @@ umask 002
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Graceful_data is looked up under <store>/<user>/polaris/data first, then
-# <store>/<user>/data, so it works on any server/store. Override with DATASET_BASE=/path.
-DATASET_BASE="${DATASET_BASE:-}"
-if [[ -z "$DATASET_BASE" ]]; then
-    for candidate in \
-        "$SCRIPT_DIR/../data/Graceful_data" \
-        "$SCRIPT_DIR/../../data/Graceful_data"; do
-        if [[ -d "$candidate/workload_runs" ]]; then
-            DATASET_BASE="$(cd "$candidate" && pwd)"
-            break
-        fi
-    done
-fi
+# Override with DATASET_BASE=/path.
+DATASET_BASE="${DATASET_BASE:-/mnt/data/shared/Graceful_data}"
 if [[ ! -d "$DATASET_BASE/workload_runs" ]]; then
     echo "Graceful_data not found (no workload_runs/ under '${DATASET_BASE:-<none>}'). Set DATASET_BASE=/path/to/Graceful_data." >&2
     exit 2
@@ -479,6 +468,7 @@ for CARDINALITY_TYPE in "${CARDINALITY_TYPE_LIST[@]}"; do
                 --augment-coarse-layers "$AUGMENT_COARSE_LAYERS" \
                 --augment-include-inv "$AUGMENT_INCLUDE_INV" \
                 --augment-refine-ret "$AUGMENT_REFINE_RET" \
+                --augment-seq-regions "$AUGMENT_SEQ_REGIONS" \
                 --lambda-struct "$LAMBDA_STRUCT" \
                 "${RUN_XLSXS[@]}" 2>&1 | tee_log
             augmented_results_exit_code="${PIPESTATUS[0]}"

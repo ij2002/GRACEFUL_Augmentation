@@ -19,14 +19,10 @@ if [[ -z "${SLURM_JOB_ID:-}" ]]; then
     export CUDA_VISIBLE_DEVICES="$GPU_UUID"
 fi
 
-# Same lookup order as run_code.sh; override with DATASET_BASE=/path.
+# Override with DATASET_BASE=/path.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if [[ -z "${DATASET_BASE:-}" ]]; then
-    for candidate in "$SCRIPT_DIR/../data/Graceful_data" "$SCRIPT_DIR/../../data/Graceful_data"; do
-        [[ -d "$candidate/workload_runs" ]] && { DATASET_BASE="$candidate"; break; }
-    done
-fi
-WL_BASE="${DATASET_BASE:?Graceful_data not found, set DATASET_BASE}/workload_runs/"
+DATASET_BASE="${DATASET_BASE:-/mnt/data/shared/Graceful_data}"
+WL_BASE="$DATASET_BASE/workload_runs/"
 cd "$SCRIPT_DIR"
 
 python find_worst_queries.py --test_db $TEST_DB --card_type $CARD_TYPE --model_config ddestfonudf_liboh_gradnorm_mldupl_loopend_loopedge --model_dir $MODEL_DIR --model_name $MODEL_NAME --augment_pooling $POOLING --augment_coarse_layers $COARSE_LAYERS --wl_base_path $WL_BASE --device cuda:0 --top_n 50 --best_n 50
