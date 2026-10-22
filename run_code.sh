@@ -439,6 +439,7 @@ for CARDINALITY_TYPE in "${CARDINALITY_TYPE_LIST[@]}"; do
                 --cardinality-type "$CARDINALITY_TYPE" \
                 --time-stamp "$GROUP_RUN_TIME" \
                 --epochs "$EPOCHS" \
+                --activation "$ACTIVATION" \
                 --output-xlsx "$BASELINE_RESULTS_XLSX" \
                 "${RUN_XLSXS[@]}" 2>&1 | tee_log
             baseline_exit_code="${PIPESTATUS[0]}"
@@ -470,6 +471,7 @@ for CARDINALITY_TYPE in "${CARDINALITY_TYPE_LIST[@]}"; do
                 --augment-include-inv "$AUGMENT_INCLUDE_INV" \
                 --augment-refine-ret "$AUGMENT_REFINE_RET" \
                 --augment-seq-regions "$AUGMENT_SEQ_REGIONS" \
+                --activation "$ACTIVATION" \
                 --lambda-struct "$LAMBDA_STRUCT" \
                 "${RUN_XLSXS[@]}" 2>&1 | tee_log
             augmented_results_exit_code="${PIPESTATUS[0]}"

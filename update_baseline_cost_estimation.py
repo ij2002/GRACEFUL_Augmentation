@@ -20,6 +20,7 @@ HEADERS = [
     "test_db",
     "cardinality_type",
     *(f"{prefix}_{metric}_mean" for _, prefix in WORKLOAD_PREFIXES for metric in METRICS),
+    "activation",
     "time_stamp",
     "epochs",
 ]
@@ -33,6 +34,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--cardinality-type", required=True)
     parser.add_argument("--time-stamp", required=True)
     parser.add_argument("--epochs", type=int, required=True)
+    parser.add_argument("--activation", default="unknown")
     parser.add_argument("--output-xlsx", required=True)
     return parser.parse_args()
 
@@ -49,6 +51,7 @@ def build_values(args: argparse.Namespace, summary: Dict[str, object]) -> Dict[s
     values = {
         "test_db": args.test_db,
         "cardinality_type": args.cardinality_type,
+        "activation": args.activation,
         "time_stamp": args.time_stamp,
         "epochs": args.epochs,
     }

@@ -114,6 +114,7 @@ def main() -> int:
         if cfg["AUGMENT"].lower() == "false":
             rc = run([py, "update_baseline_cost_estimation.py", *common,
                       "--cardinality-type", cfg["CARDINALITY_TYPE"],
+                      "--activation", cfg.get("ACTIVATION", "unknown"),
                       "--output-xlsx", str(BASELINE_XLSX), *files], args.dry_run)
             exit_code = exit_code or rc
             continue
@@ -125,6 +126,7 @@ def main() -> int:
 
         rc = run([py, "update_augmented_cost_estimation.py", *common,
                   "--cardinality-type", cfg["CARDINALITY_TYPE"],
+                  "--activation", cfg.get("ACTIVATION", "unknown"),
                   "--baseline-xlsx", str(BASELINE_XLSX),
                   "--output-xlsx", str(AUGMENTED_XLSX),
                   "--augment-seq-regions", cfg.get("AUGMENT_SEQ_REGIONS", "False"),

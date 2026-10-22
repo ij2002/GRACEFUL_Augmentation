@@ -26,6 +26,8 @@ def arguments(**overrides):
         "augment_coarse_layers": 1,
         "augment_include_inv": "False",
         "augment_refine_ret": "False",
+        "augment_seq_regions": "False",
+        "activation": "LeakyReLU",
         "lambda_struct": 0.0,
     }
     values.update(overrides)
@@ -44,12 +46,14 @@ class UpdateAugmentedCostEstimationTest(unittest.TestCase):
             "augment-coarse-layers": 1,
             "augment-include-inv": "False",
             "augment-refine-ret": "False",
+            "activation": "LeakyReLU",
             "lambda-struct": 0.0,
         }
-        legacy = {**current, "test-augment": None}
+        legacy = {**current, "test-augment": None, "activation": None}
 
         self.assertTrue(same_configuration(legacy, current))
         self.assertFalse(same_configuration(legacy, {**current, "test-augment": "False"}))
+        self.assertFalse(same_configuration(legacy, {**current, "activation": "SELU"}))
 
     def test_read_baseline_matches_database_and_cardinality(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -26,6 +26,7 @@ CONFIG_HEADERS = (
     "augment-include-inv",
     "augment-refine-ret",
     "augment-seq-regions",
+    "activation",
     "lambda-struct",
 )
 HEADERS = [
@@ -57,6 +58,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--augment-refine-ret", required=True)
     # Optional: summaries from before SEQ supernodes existed have no such flag (= False).
     parser.add_argument("--augment-seq-regions", default="False")
+    parser.add_argument("--activation", default="unknown")
     parser.add_argument("--lambda-struct", type=float, required=True)
     return parser.parse_args()
 
@@ -147,6 +149,7 @@ def build_values(
         "augment-include-inv": args.augment_include_inv,
         "augment-refine-ret": args.augment_refine_ret,
         "augment-seq-regions": args.augment_seq_regions,
+        "activation": args.activation,
         "lambda-struct": args.lambda_struct,
     }
     for kind, prefix in WORKLOAD_PREFIXES:
@@ -192,6 +195,11 @@ def same_configuration(left: Dict[str, object], right: Dict[str, object]) -> boo
             left_value = "False" if left.get(header) in (None, "") else left.get(header)
             right_value = "False" if right.get(header) in (None, "") else right.get(header)
             if normalized(left_value) != normalized(right_value):
+                return False
+        elif header == "activation":
+            # Rows created before ACTIVATION was recorded used the LeakyReLU default.
+            left_value = "LeakyReLU" if left.get(header) in (None, "") else left.get(header)
+            if normalized(left_value) != normalized(right.get(header)):
                 return False
         elif header == "test-augment":
             # Rows created before TEST_AUGMENT existed always tested with augmentation enabled.
