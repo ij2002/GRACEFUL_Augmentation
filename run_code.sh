@@ -29,6 +29,7 @@
 #   AUGMENT=False -> results/baseline_cost_estimation.xlsx (via update_baseline_cost_estimation.py)
 #   AUGMENT=True  -> results/augmented_cost_estimation.xlsx (via update_augmented_cost_estimation.py)
 #                    + a PNG per run in results/augmented_plots/ (via plot_augmented_cost_estimation.py)
+#   Loss curve PNGs (plot_loss_curves.py): results/augmented_plots/ when AUGMENT=True, results/baseline_plots/ when AUGMENT=False
 #
 # To run several configurations (different DBs/GPUs/etc.) in one go, write a
 # second driver script that calls this one multiple times with different env
@@ -68,6 +69,7 @@ SUMMARY_DIR="$SCRIPT_DIR/saved/summary_xlsx"
 BASELINE_RESULTS_XLSX="$SCRIPT_DIR/results/baseline_cost_estimation.xlsx"
 AUGMENTED_RESULTS_XLSX="$SCRIPT_DIR/results/augmented_cost_estimation.xlsx"
 AUGMENTED_PLOT_DIR="$SCRIPT_DIR/results/augmented_plots"
+BASELINE_PLOT_DIR="$SCRIPT_DIR/results/baseline_plots"
 
 SUMMARY_SCRIPT="$SCRIPT_DIR/summarize_training_log.py"
 REPEAT_SUMMARY_SCRIPT="$SCRIPT_DIR/summarize_repeated_runs.py"
@@ -382,12 +384,18 @@ for CARDINALITY_TYPE in "${CARDINALITY_TYPE_LIST[@]}"; do
         if [[ -n "$checkpoint_pt_path" ]]; then
             stats_csv_path="${checkpoint_pt_path%.pt}.csv"
             if [[ -f "$stats_csv_path" ]]; then
+                # Loss plots follow the run type: augmented runs next to the augmented q-error plots, baseline runs in their own folder.
+                if [[ "${AUGMENT,,}" == "true" ]]; then
+                    LOSS_PLOT_DIR="$AUGMENTED_PLOT_DIR"
+                else
+                    LOSS_PLOT_DIR="$BASELINE_PLOT_DIR"
+                fi
                 set +e
                 python "$LOSS_CURVE_SCRIPT" \
                     --csv "$stats_csv_path" \
                     --test-db "$TEST_DB" \
                     --time-stamp "${GROUP_RUN_TIME}_run${run_number}" \
-                    --output-dir "$AUGMENTED_PLOT_DIR" \
+                    --output-dir "$LOSS_PLOT_DIR" \
                     --seed "$SEED" \
                     --activation "$ACTIVATION" \
                     --cardinality "$CARDINALITY_TYPE" \
