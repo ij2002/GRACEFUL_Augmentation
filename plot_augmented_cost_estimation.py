@@ -37,6 +37,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--baseline-xlsx", required=True)
     parser.add_argument("--output-dir", required=True)
     parser.add_argument("--seed", required=True)
+    parser.add_argument("--activation", default="unknown")
     parser.add_argument("--epochs", required=True)
     parser.add_argument("--augment", required=True)
     parser.add_argument("--test-augment", required=True)
@@ -174,7 +175,7 @@ def format_settings(args: argparse.Namespace, baseline_epochs: Optional[float] =
     if baseline_epochs is not None:
         epochs_label += f" (BASELINE_EPOCHS={baseline_epochs:g})"
     return (
-        f"SEED={args.seed} | {epochs_label} | AUGMENT={args.augment} | TEST_AUGMENT={args.test_augment} | "
+        f"SEED={args.seed} | ACTIVATION={args.activation} | {epochs_label} | AUGMENT={args.augment} | TEST_AUGMENT={args.test_augment} | "
         f"AUGMENT_POOLING={args.augment_pooling} | "
         f"AUGMENT_REFINEMENT={args.augment_refinement}\n"
         f"AUGMENT_COARSE_LAYERS={args.augment_coarse_layers} | "

@@ -389,6 +389,7 @@ for CARDINALITY_TYPE in "${CARDINALITY_TYPE_LIST[@]}"; do
                     --time-stamp "${GROUP_RUN_TIME}_run${run_number}" \
                     --output-dir "$AUGMENTED_PLOT_DIR" \
                     --seed "$SEED" \
+                    --activation "$ACTIVATION" \
                     --cardinality "$CARDINALITY_TYPE" \
                     --augment "$AUGMENT" \
                     --test-augment "$TEST_AUGMENT" \
@@ -491,6 +492,7 @@ for CARDINALITY_TYPE in "${CARDINALITY_TYPE_LIST[@]}"; do
                 --baseline-xlsx "$BASELINE_RESULTS_XLSX" \
                 --output-dir "$AUGMENTED_PLOT_DIR" \
                 --seed "$SEED" \
+                --activation "$ACTIVATION" \
                 --epochs "$EPOCHS" \
                 --augment "$AUGMENT" \
                 --test-augment "$TEST_AUGMENT" \

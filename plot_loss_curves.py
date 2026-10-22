@@ -54,6 +54,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--time-stamp", default=TIME_STAMP, help="Run's GROUP_RUN_TIME (used for the output filename)")
     parser.add_argument("--output-dir", default=OUTPUT_DIR, help="Directory to save the plot into")
     parser.add_argument("--seed", default=SEED)
+    parser.add_argument("--activation", default="unknown")
     parser.add_argument("--cardinality", default=CARDINALITY)
     parser.add_argument("--augment", default=AUGMENT)
     parser.add_argument("--test-augment", default=TEST_AUGMENT)
@@ -83,16 +84,14 @@ def unused_path(path: Path) -> Path:
 
 
 def format_settings(args: argparse.Namespace) -> str:
-    settings = f"SEED={args.seed} | CARDINALITY={args.cardinality} | AUGMENT={args.augment}"
-    if str(args.augment).strip().lower() == "true":
-        settings += (
-            f" | TEST_AUGMENT={args.test_augment}\n"
-            f"AUGMENT_POOLING={args.augment_pooling} | AUGMENT_REFINEMENT={args.augment_refinement} | "
-            f"AUGMENT_COARSE_LAYERS={args.augment_coarse_layers}\n"
-            f"AUGMENT_INCLUDE_INV={args.augment_include_inv} | AUGMENT_REFINE_RET={args.augment_refine_ret} | "
-            f"LAMBDA_STRUCT={args.lambda_struct}"
-        )
-    return settings
+    return (
+        f"SEED={args.seed} | ACTIVATION={args.activation} | CARDINALITY={args.cardinality} | "
+        f"AUGMENT={args.augment} | TEST_AUGMENT={args.test_augment}\n"
+        f"AUGMENT_POOLING={args.augment_pooling} | AUGMENT_REFINEMENT={args.augment_refinement} | "
+        f"AUGMENT_COARSE_LAYERS={args.augment_coarse_layers}\n"
+        f"AUGMENT_INCLUDE_INV={args.augment_include_inv} | AUGMENT_REFINE_RET={args.augment_refine_ret} | "
+        f"LAMBDA_STRUCT={args.lambda_struct}"
+    )
 
 
 def robust_ylim(*series: pd.Series, upper_pct: float = 90, pad_frac: float = 0.15):

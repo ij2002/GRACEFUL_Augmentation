@@ -137,6 +137,7 @@ def main() -> int:
                       "--baseline-xlsx", str(BASELINE_XLSX),
                       "--output-dir", str(PLOT_DIR),
                       "--seed", cfg["SEED"],
+                      "--activation", cfg.get("ACTIVATION", "unknown"),
                       "--augment", cfg["AUGMENT"],
                       *aug_flags, *files], args.dry_run)
             exit_code = exit_code or rc
