@@ -250,6 +250,22 @@ append_summary() {
     fi
 }
 
+# Record why the run was stopped from outside (terminal/SSH hangup, kill, Ctrl-C).
+# Without this, a killed run leaves a log that just stops, with no DONE/FAILED line.
+# SIGKILL cannot be trapped, so it still leaves no record.
+on_signal() {
+    local sig="$1"
+    local msg="=== $(date) INTERRUPTED by SIG$sig (pid $$) ==="
+    echo "$msg" >&2
+    if [[ -n "${LOG:-}" ]]; then
+        echo "$msg" | tee -a "$LOG" >/dev/null
+    fi
+    exit $((128 + $(kill -l "$sig")))
+}
+trap 'on_signal HUP' HUP
+trap 'on_signal INT' INT
+trap 'on_signal TERM' TERM
+
 declare -A cardinality_exit_codes=()
 overall_exit_code=0
 
