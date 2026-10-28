@@ -17,7 +17,7 @@
 #
 # Usage:
 #   tmux new -s all_runs
-#   GPU_UUID=GPU-... bash run_all_1.sh      # or fill in GPU_UUID below
+#   GPU_UUID=GPU-... bash run_all.sh      # or fill in GPU_UUID below
 
 set -uo pipefail
 
@@ -28,7 +28,7 @@ RUN_SCRIPT="$SCRIPT_DIR/run_code.sh"
 # Never a GPU index. A single job can still override it with GPU_UUID=... in
 # its entry below. Leave empty when running inside a Slurm allocation.
 if [[ -z "${SLURM_JOB_ID:-}" ]]; then
-    export GPU_UUID="${GPU_UUID:-GPU-dfcf303a-7e8d-e2f6-b68c-c3d30682f80b}"  # GPU 5
+    export GPU_UUID="${GPU_UUID:-GPU-3b983a64-1c75-e3a2-8a74-34698b5335e7}"  # GPU 6
 fi
 
 # -----------------------------------------------------------------------
@@ -38,13 +38,18 @@ fi
 # summary printout below.
 # -----------------------------------------------------------------------
 JOBS=(
-    "basketball1 TEST_DB=basketball AUGMENT_POOLING=max CARDINALITY_TYPES=act EPOCHS=100 LAMBDA_STRUCT=0.25 AUGMENT_COARSE_LAYERS=3"
-    # "basketball2 TEST_DB=basketball AUGMENT_POOLING=attention CARDINALITY_TYPES=act EPOCHS=100 LAMBDA_STRUCT=0.25 AUGMENT_COARSE_LAYERS=3"
-    # "carc-mean TEST_DB=carcinogenesis AUGMENT_POOLING=mean CARDINALITY_TYPES=act"
-    # "carc-max TEST_DB=carcinogenesis AUGMENT_POOLING=max CARDINALITY_TYPES=act"
-    # "carc-attention TEST_DB=carcinogenesis AUGMENT_POOLING=attention CARDINALITY_TYPES=act"
-    # "carc-weighted-mean TEST_DB=carcinogenesis AUGMENT_POOLING=weighted_mean CARDINALITY_TYPES=act"
-    # "carc-sum-residual TEST_DB=carcinogenesis AUGMENT_REFINEMENT=sum_residual CARDINALITY_TYPES=act"
+    # "baseball TEST_DB=baseball AUGMENT_POOLING=hybrid EPOCHS=100 LAMBDA_STRUCT=0.1 AUGMENT_COARSE_LAYERS=1 AUGMENT_REFINEMENT=gated_residual ACTIVATION=CELU"
+    # "ssb TEST_DB=ssb AUGMENT_POOLING=hybrid EPOCHS=100 LAMBDA_STRUCT=0.1 AUGMENT_COARSE_LAYERS=1 AUGMENT_REFINEMENT=gated_residual ACTIVATION=SELU"
+    "walmart TEST_DB=walmart AUGMENT_POOLING=hybrid EPOCHS=100 LAMBDA_STRUCT=0.1 AUGMENT_COARSE_LAYERS=1 AUGMENT_REFINEMENT=gated_residual ACTIVATION=SELU"
+    "credit TEST_DB=credit AUGMENT_POOLING=hybrid EPOCHS=100 LAMBDA_STRUCT=0.1 AUGMENT_COARSE_LAYERS=1 AUGMENT_REFINEMENT=gated_residual ACTIVATION=SELU"
+    "tournament TEST_DB=tournament AUGMENT_POOLING=hybrid EPOCHS=100 LAMBDA_STRUCT=0.1 AUGMENT_COARSE_LAYERS=1 AUGMENT_REFINEMENT=gated_residual ACTIVATION=SELU"
+    "seznam TEST_DB=seznam AUGMENT_POOLING=hybrid EPOCHS=100 LAMBDA_STRUCT=0.1 AUGMENT_COARSE_LAYERS=1 AUGMENT_REFINEMENT=gated_residual ACTIVATION=SELU"
+    # "cons-sum TEST_DB=consumer AUGMENT_POOLING=sum CARDINALITY_TYPES=act"
+    # "cons-mean TEST_DB=consumer AUGMENT_POOLING=mean CARDINALITY_TYPES=act"
+    # "cons-max TEST_DB=consumer AUGMENT_POOLING=max CARDINALITY_TYPES=act"
+    # "cons-attention TEST_DB=consumer AUGMENT_POOLING=attention CARDINALITY_TYPES=act"
+    # "cons-weighted-mean TEST_DB=consumer AUGMENT_POOLING=weighted_mean CARDINALITY_TYPES=act"
+    # "cons-sum-residual TEST_DB=consumer AUGMENT_REFINEMENT=sum_residual CARDINALITY_TYPES=act"
 )
 
 declare -A exit_codes=()

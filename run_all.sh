@@ -28,7 +28,7 @@ RUN_SCRIPT="$SCRIPT_DIR/run_code.sh"
 # Never a GPU index. A single job can still override it with GPU_UUID=... in
 # its entry below. Leave empty when running inside a Slurm allocation.
 if [[ -z "${SLURM_JOB_ID:-}" ]]; then
-    export GPU_UUID="${GPU_UUID:-GPU-452b1bc7-d479-c54a-050e-e27eabf2d1de}"  # GPU 6
+    export GPU_UUID="${GPU_UUID:-GPU-a8c5cc08-4849-f3c5-994a-4d8f2904006f}"  # GPU 6
 fi
 
 # -----------------------------------------------------------------------
@@ -38,7 +38,10 @@ fi
 # summary printout below.
 # -----------------------------------------------------------------------
 JOBS=(
-    "basketball2 TEST_DB=basketball AUGMENT_POOLING=max CARDINALITY_TYPES=act EPOCHS=100 LAMBDA_STRUCT=0.1 AUGMENT_COARSE_LAYERS=1 AUGMENT_REFINEMENT=residual_sum"
+    # "baseball TEST_DB=baseball AUGMENT_POOLING=hybrid EPOCHS=100 LAMBDA_STRUCT=0.1 AUGMENT_COARSE_LAYERS=1 AUGMENT_REFINEMENT=gated_residual ACTIVATION=CELU"
+    "airline TEST_DB=airline AUGMENT_POOLING=hybrid EPOCHS=100 LAMBDA_STRUCT=0.1 AUGMENT_COARSE_LAYERS=1 AUGMENT_REFINEMENT=gated_residual ACTIVATION=SELU"
+    "genome TEST_DB=genome AUGMENT_POOLING=hybrid EPOCHS=100 LAMBDA_STRUCT=0.1 AUGMENT_COARSE_LAYERS=1 AUGMENT_REFINEMENT=gated_residual ACTIVATION=SELU"
+    "movielens TEST_DB=movielens AUGMENT_POOLING=hybrid EPOCHS=100 LAMBDA_STRUCT=0.1 AUGMENT_COARSE_LAYERS=1 AUGMENT_REFINEMENT=gated_residual ACTIVATION=SELU"
     # "cons-sum TEST_DB=consumer AUGMENT_POOLING=sum CARDINALITY_TYPES=act"
     # "cons-mean TEST_DB=consumer AUGMENT_POOLING=mean CARDINALITY_TYPES=act"
     # "cons-max TEST_DB=consumer AUGMENT_POOLING=max CARDINALITY_TYPES=act"
