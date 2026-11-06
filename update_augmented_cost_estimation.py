@@ -29,11 +29,13 @@ CONFIG_HEADERS = (
     "activation",
     "lambda-struct",
 )
+IMPROVE_HEADERS = ("pull_up_q50_improve_%", "push_down_q50_improve_%", "both_q50_improve_%")
 HEADERS = [
     "test_db",
     "cardinality_type",
     *(f"{prefix}_{metric}_mean" for _, prefix in WORKLOAD_PREFIXES for metric in METRICS),
     *(f"diff_{prefix}_{metric}_mean" for _, prefix in WORKLOAD_PREFIXES for metric in METRICS),
+    *IMPROVE_HEADERS,
     "time_stamp",
     *CONFIG_HEADERS,
     "epochs",
@@ -163,6 +165,21 @@ def build_values(
     return values
 
 
+def add_improvements(result: Dict[str, object]) -> None:
+    """Set q50 improvement vs baseline in % (positive = better); 'both' is the mean of the two."""
+    improvements = []
+    for prefix, header in zip(("pull_up", "push_down"), IMPROVE_HEADERS):
+        augmented = as_float(result.get(f"{prefix}_q50_mean"))
+        diff = as_float(result.get(f"diff_{prefix}_q50_mean"))
+        baseline = None if augmented is None or diff is None else augmented + diff
+        improvement = None if not baseline else round(diff / baseline * 100, 2)
+        result[header] = improvement
+        improvements.append(improvement)
+    result[IMPROVE_HEADERS[2]] = (
+        None if None in improvements else round(sum(improvements) / len(improvements), 2)
+    )
+
+
 def read_existing_results(worksheet):
     rows = worksheet.iter_rows(values_only=True)
     headers = next(rows, None)
@@ -235,6 +252,9 @@ def upsert_result(path: str, values: Dict[str, object]) -> None:
             results.append(values)
         else:
             results[target_index] = values
+
+        for result in results:
+            add_improvements(result)
 
         worksheet.delete_rows(1, worksheet.max_row)
         worksheet.append(HEADERS)

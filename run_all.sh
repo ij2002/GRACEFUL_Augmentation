@@ -28,7 +28,7 @@ RUN_SCRIPT="$SCRIPT_DIR/run_code.sh"
 # Never a GPU index. A single job can still override it with GPU_UUID=... in
 # its entry below. Leave empty when running inside a Slurm allocation.
 if [[ -z "${SLURM_JOB_ID:-}" ]]; then
-    export GPU_UUID="${GPU_UUID:-GPU-a8c5cc08-4849-f3c5-994a-4d8f2904006f}"  # GPU 6
+    export GPU_UUID="${GPU_UUID:-GPU-9b678c1a-a3b8-ab12-840b-4a4a9f2e7a18}"  # GPU 6
 fi
 
 # -----------------------------------------------------------------------
@@ -37,18 +37,31 @@ fi
 # defaults). A short label (before the first space) is just for the
 # summary printout below.
 # -----------------------------------------------------------------------
-JOBS=(
-    # "baseball TEST_DB=baseball AUGMENT_POOLING=hybrid EPOCHS=100 LAMBDA_STRUCT=0.1 AUGMENT_COARSE_LAYERS=1 AUGMENT_REFINEMENT=gated_residual ACTIVATION=CELU"
-    "airline TEST_DB=airline AUGMENT_POOLING=hybrid EPOCHS=100 LAMBDA_STRUCT=0.1 AUGMENT_COARSE_LAYERS=1 AUGMENT_REFINEMENT=gated_residual ACTIVATION=SELU"
-    "genome TEST_DB=genome AUGMENT_POOLING=hybrid EPOCHS=100 LAMBDA_STRUCT=0.1 AUGMENT_COARSE_LAYERS=1 AUGMENT_REFINEMENT=gated_residual ACTIVATION=SELU"
-    "movielens TEST_DB=movielens AUGMENT_POOLING=hybrid EPOCHS=100 LAMBDA_STRUCT=0.1 AUGMENT_COARSE_LAYERS=1 AUGMENT_REFINEMENT=gated_residual ACTIVATION=SELU"
-    # "cons-sum TEST_DB=consumer AUGMENT_POOLING=sum CARDINALITY_TYPES=act"
-    # "cons-mean TEST_DB=consumer AUGMENT_POOLING=mean CARDINALITY_TYPES=act"
-    # "cons-max TEST_DB=consumer AUGMENT_POOLING=max CARDINALITY_TYPES=act"
-    # "cons-attention TEST_DB=consumer AUGMENT_POOLING=attention CARDINALITY_TYPES=act"
-    # "cons-weighted-mean TEST_DB=consumer AUGMENT_POOLING=weighted_mean CARDINALITY_TYPES=act"
-    # "cons-sum-residual TEST_DB=consumer AUGMENT_REFINEMENT=sum_residual CARDINALITY_TYPES=act"
-)
+# Fixed (do not change): CARDINALITY_TYPES=est (default), AUGMENT_SEQ_REGIONS=True,
+# AUGMENT_POOLING=hybrid, AUGMENT_REFINEMENT=gated_residual, ACTIVATION=SELU, EPOCHS=100.
+# DBs here have no run with >5% mean improvement (pull-up and push-down both > 0)
+# under those settings. (walmart, genome already have one.)
+#
+# Swept (reduced from 4 layers x 3 lambdas using past results: among est +
+# seq-regions=True runs, LAMBDA_STRUCT=0.1 wins most often (48% vs 40% for 0, and 0
+# is erratic, e.g. -195% on airline); 0.01 gave 25% on its single run; only
+# COARSE_LAYERS=1 has ever been tried, so 2 and 3 are explorations):
+#   (layers, lambda) = (1,0.1) proven default | (1,0.01) | (2,0.1) | (3,0.1)
+# Order is CONFIG-major: every db runs config 1, then every db runs config 2, ...
+# so you get one result per db before any db gets its second.
+# SKIP = combos already run with these exact settings.
+DBS=(baseball movielens consumer ssb accidents)
+CONFIGS=("1 0.1" "1 0.01" "2 0.1" "3 0.1")
+declare -A SKIP=( [baseball_1_0.1]=1 [movielens_1_0.1]=1 )
+
+JOBS=()
+for cfg in "${CONFIGS[@]}"; do
+    read -r L LS <<< "$cfg"
+    for db in "${DBS[@]}"; do
+        [[ -n "${SKIP[${db}_${L}_${LS}]:-}" ]] && continue
+        JOBS+=("${db}_L${L}_S${LS} TEST_DB=$db AUGMENT_SEQ_REGIONS=True AUGMENT_POOLING=hybrid EPOCHS=100 LAMBDA_STRUCT=$LS AUGMENT_COARSE_LAYERS=$L AUGMENT_REFINEMENT=gated_residual ACTIVATION=SELU")
+    done
+done
 
 declare -A exit_codes=()
 

@@ -167,7 +167,7 @@ AUGMENT_REFINE_RET="${AUGMENT_REFINE_RET:-False}"    #? True, False
 AUGMENT_SEQ_REGIONS="${AUGMENT_SEQ_REGIONS:-True}"   #? True, False (SEQ supernodes for statements outside loops/branches)
 LAMBDA_STRUCT="${LAMBDA_STRUCT:-0}"                  #? 0.0, 0.001, 0.01, 0.05, 0.1 (total_loss = runtime_loss + LAMBDA_STRUCT * coarse_fine_loss)
 
-SAVE_LOSS_PLOTS="${SAVE_LOSS_PLOTS:-True}"   #? True, False -- generate train/val loss & accuracy plots after this run
+SAVE_LOSS_PLOTS="${SAVE_LOSS_PLOTS:-False}"   #? True, False -- generate train/val loss & accuracy plots after this run
 
 # =============================================================================
 # 8. Setup shared across every cardinality type in this invocation# =============================================================================
